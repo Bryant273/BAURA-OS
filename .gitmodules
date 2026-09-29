@@ -1,0 +1,3 @@
+[submodule "KERNEL/L4/sel4"]
+	path = KERNEL/L4/sel4
+	url = https://github.com/seL4/seL4.git

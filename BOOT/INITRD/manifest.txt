@@ -1,0 +1,13 @@
+
+# BAURA OS Initial RAMDisk Manifest
+[KERNEL_MODULES]
+/drivers/storage/virtio_block.bin
+/drivers/input/usb_hid.bin
+/drivers/net/virtio_net.bin
+[SYSTEM_SERVICES]
+/core/system_manager.bin
+/core/process_manager.bin
+/core/security_manager.bin
+[USERSPACE_INIT]
+/bin/shell
+/bin/init

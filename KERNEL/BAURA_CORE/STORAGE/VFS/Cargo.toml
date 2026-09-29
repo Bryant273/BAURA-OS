@@ -1,0 +1,11 @@
+
+[package]
+name = "baura_vfs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+# No external deps for the kernel core to keep it lean

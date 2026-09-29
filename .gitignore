@@ -1,0 +1,20 @@
+
+# Build artifacts
+*.o
+*.bin
+*.bin.map
+*.elf
+*.iso
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# IDE and system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build directory
+INFRASTRUCTURE/BUILD/
