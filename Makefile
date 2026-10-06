@@ -5,6 +5,7 @@ NASM ?= nasm
 GRUB_FILE ?= grub-file
 GRUB_MKRESCUE ?= grub-mkrescue
 HOST_CC ?= cc
+HOST_CXX ?= c++
 HOST_CMAKE ?= cmake
 X86_64_CROSS_COMPILE ?= x86_64-elf-
 X86_64_CC := $(X86_64_CROSS_COMPILE)gcc
@@ -42,19 +43,25 @@ CORE_SOURCES := \
     KERNEL/BAURA_CORE/SERVICE_MANAGER/baura_service_manager.c \
     KERNEL/BAURA_CORE/STORAGE/baura_storage.c \
     KERNEL/BAURA_CORE/STORAGE/VOLUME_MANAGER/volume_manager.c \
+    KERNEL/BAURA_CORE/STORAGE/VFS/BAURA_VFS.c \
     KERNEL/BAURA_CORE/SYSTEM_API/baura_system_api.c
 CORE_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CORE_SOURCES))
 CORE_TEST_SOURCES := $(filter-out KERNEL/BAURA_CORE/kernel_main.c KERNEL/BAURA_CORE/runtime.c,$(CORE_SOURCES))
 X86_64_CORE_SOURCES := $(filter-out KERNEL/BAURA_CORE/kernel_main.c,$(CORE_SOURCES)) \
     KERNEL/BAURA_CORE/runtime.c \
     KERNEL/BAURA_CORE/SYSTEM_API/baura_ipc_v2.c \
-    KERNEL/BAURA_CORE/SYSTEM_API/baura_core_entry.c
+    KERNEL/BAURA_CORE/SYSTEM_API/baura_core_entry.c \
+    KERNEL/BAURA_CORE/SYSTEM_API/baura_uart_console.c \
+    BOOT/FIRMWARE/UART/uart_driver.c
 X86_64_CORE_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/x86_64/%.o,$(X86_64_CORE_SOURCES))
 CORE_TEST_SOURCES += KERNEL/BAURA_CORE/SYSTEM_API/baura_ipc_v2.c \
-    KERNEL/BAURA_CORE/SYSTEM_API/baura_core_entry.c
+    KERNEL/BAURA_CORE/SYSTEM_API/baura_core_entry.c \
+    KERNEL/BAURA_CORE/SYSTEM_API/baura_uart_console.c \
+    BOOT/FIRMWARE/UART/uart_driver.c
 X86_64_CFLAGS ?= -std=gnu11 -m64 -ffreestanding -fno-pic -fno-pie -fno-stack-protector -fno-builtin -Wall -Wextra -Werror -O2 -DBAURA_TARGET_X86_64=1
 
 .PHONY: all iso run test-core test-core-x86_64 test-abi test-rust \
+	test-boot test-communication test-gui test-integration \
 	baura-core-x86_64 sel4-configure-x86_64 sel4-kernel-x86_64 \
 	baura-x86_64 clean
 
@@ -111,6 +118,68 @@ test-abi:
 	mkdir -p $(BUILD_DIR)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I. -o $(BUILD_DIR)/baura_ipc_v2_test KERNEL/BAURA_CORE/tests/baura_ipc_v2_test.c KERNEL/BAURA_CORE/SYSTEM_API/baura_ipc_v2.c
 	$(BUILD_DIR)/baura_ipc_v2_test
+
+test-boot:
+	mkdir -p $(BUILD_DIR)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -IBOOT/BOOTLOADER \
+		-o $(BUILD_DIR)/boot_handoff_test \
+		BOOT/tests/boot_handoff_test.c \
+		BOOT/BOOTLOADER/KERNEL_LOADER/L4_LOADER.c
+	$(BUILD_DIR)/boot_handoff_test
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror \
+		-o $(BUILD_DIR)/uart_driver_test \
+		BOOT/tests/uart_driver_test.c BOOT/FIRMWARE/UART/uart_driver.c \
+		KERNEL/BAURA_CORE/SYSTEM_API/baura_uart_console.c
+	$(BUILD_DIR)/uart_driver_test
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror \
+		-o $(BUILD_DIR)/uefi_memory_map_test \
+		BOOT/tests/uefi_memory_map_test.c BOOT/FIRMWARE/UEFI/uefi_mem.c
+	$(BUILD_DIR)/uefi_memory_map_test
+
+test-communication:
+	mkdir -p $(BUILD_DIR)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror \
+		-o $(BUILD_DIR)/rpc_core_test \
+		COMMUNICATION/RPC/tests/rpc_core_test.c \
+		COMMUNICATION/RPC/BAURA_RPC_CORE.c
+	$(BUILD_DIR)/rpc_core_test
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror \
+		-o $(BUILD_DIR)/message_bus_test \
+		COMMUNICATION/MESSAGE_BUS/tests/message_bus_test.c \
+		COMMUNICATION/MESSAGE_BUS/BAURA_MESSAGE_BUS.c
+	$(BUILD_DIR)/message_bus_test
+
+test-gui:
+	mkdir -p $(BUILD_DIR)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I. -c \
+		-o $(BUILD_DIR)/baura_service_manager_gui_test.o \
+		KERNEL/BAURA_CORE/SERVICE_MANAGER/baura_service_manager.c
+	$(HOST_CXX) -std=c++17 -Wall -Wextra -Werror -IGUI \
+		-o $(BUILD_DIR)/gui_render_test \
+		GUI/tests/gui_render_test.cpp GUI/BAURA_GUI_FFI.cpp \
+		GUI/INPUT/ps2_driver.cpp \
+		GUI/PLATFORM/baura_gui_platform.cpp \
+		GUI/PLATFORM/baura_gui_core_service.cpp \
+		GUI/DISPLAY_SERVER/BAURA_DISPLAY_SERVER.cpp \
+		GUI/COMPOSITOR/BAURA_COMPOSITOR.cpp \
+		GUI/WINDOW_MANAGER/BAURA_WINDOW_MANAGER.cpp \
+		GUI/WINDOW_MANAGER/input_handler.cpp \
+		GUI/BGE/renderer.cpp GUI/BGE/renderer_core.cpp \
+		GUI/BGE/effects_engine.cpp GUI/BGE/gpu_accel_3d.cpp \
+		GUI/BGE/window_manager.cpp \
+		GUI/BGE/ui_framework.cpp \
+		GUI/UI_FRAMEWORK/baura_ui_toolkit.cpp \
+		GUI/UI_FRAMEWORK/baura_hybrid_taskbar.cpp \
+		GUI/UI_FRAMEWORK/papirus_icon_catalog.cpp \
+		GUI/UI_FRAMEWORK/system_bubble.cpp \
+		GUI/UI_FRAMEWORK/ui_extensions.cpp \
+		GUI/DESKTOP/baura_desktop.cpp \
+		GUI/LOGIN_SCREEN/login_screen.cpp \
+		BOOT/INSTALLER/installer_gui.cpp \
+		$(BUILD_DIR)/baura_service_manager_gui_test.o
+	$(BUILD_DIR)/gui_render_test
+
+test-integration: test-boot test-communication test-gui test-core
 
 test-core-x86_64: test-abi
 	mkdir -p $(BUILD_DIR)/x86_64

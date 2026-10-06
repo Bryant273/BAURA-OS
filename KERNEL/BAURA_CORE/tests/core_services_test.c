@@ -24,6 +24,7 @@
 #include "../SECURITY/BAURA_SECURITY_RUST.h"
 #include "../STORAGE/baura_storage.h"
 #include "../STORAGE/VOLUME_MANAGER/volume_manager.h"
+#include "../STORAGE/VFS/BAURA_VFS.h"
 
 _Static_assert(sizeof(BauraSize) == 8, "BAURA_SIZE must be 64-bit");
 _Static_assert(sizeof(BauraOffset) == 8, "BAURA_OFFSET must be 64-bit");
@@ -64,6 +65,65 @@ static uint32_t destroyed_vms;
 static uint8_t updates_succeed;
 static char console_output[32];
 static size_t console_output_length;
+static uint64_t next_test_task_id = 1000;
+static uint32_t test_task_terminations;
+static BauraProcessState test_task_state;
+static uint32_t boot_info_validations;
+static BauraStatus boot_info_validation_result;
+static uint32_t graphical_service_starts;
+
+static BauraStatus start_graphical_service_fixture(void *context) {
+    assert(context == &graphical_service_starts);
+    ++graphical_service_starts;
+    return BAURA_OK;
+}
+
+static BauraStatus validate_boot_info_fixture(void *context,
+                                              const void *boot_info) {
+    assert(context == &boot_info_validations);
+    assert(boot_info == &boot_info_validations);
+    ++boot_info_validations;
+    return boot_info_validation_result;
+}
+
+static BauraStatus authority_check_fixture(void *context, uint64_t subject_id,
+                                           const char *capability_name) {
+    (void)context;
+    assert(subject_id == 81);
+    return strcmp(capability_name, BAURA_ABI_CAP_FS_READ) == 0
+               ? BAURA_OK
+               : BAURA_ERR_PERMISSION;
+}
+
+static BauraStatus process_start_fixture(void *context, const char *name,
+                                         const char *image_path,
+                                         const char *arguments,
+                                         uint64_t parent_task_id,
+                                         uint64_t *task_id) {
+    (void)context;
+    assert(strcmp(name, "worker") == 0);
+    assert(strcmp(image_path, "PC/C:/System/worker.elf") == 0);
+    assert(strcmp(arguments, "--once") == 0 || arguments[0] == '\0');
+    assert(parent_task_id == 0);
+    *task_id = next_test_task_id++;
+    test_task_state = BAURA_PROCESS_RUNNING;
+    return BAURA_OK;
+}
+
+static BauraStatus process_set_state_fixture(void *context, uint64_t task_id,
+                                             BauraProcessState state) {
+    (void)context;
+    assert(task_id >= 1000);
+    test_task_state = state;
+    return BAURA_OK;
+}
+
+static BauraStatus process_terminate_fixture(void *context, uint64_t task_id) {
+    (void)context;
+    assert(task_id >= 1000);
+    ++test_task_terminations;
+    return BAURA_OK;
+}
 
 static BauraStatus console_write_fixture(void *context, const char *text, size_t length) {
     size_t index;
@@ -137,7 +197,7 @@ static BauraStatus service_stop(void *context) {
 
 static void test_system_and_configuration(void) {
     char value[16];
-    BauraCorePlatform platform = {console_write_fixture, &console_output_length};
+    BauraCorePlatform platform = {0};
     static const char expected_console[] = "BAURA OS Core ready\r\n";
     assert(BAURA_ABI_VERSION_MAJOR == 2u && BAURA_ABI_VERSION_MINOR == 0u);
     assert(strcmp(BAURA_ABI_OP_FS_CREATE, "FS-0001") == 0);
@@ -148,9 +208,47 @@ static void test_system_and_configuration(void) {
     assert(strcmp(BAURA_ABI_SYMBOL_NETWORK_CONNECT, "BAURA_NET_CONNECT") == 0);
     assert(BAURA_FS_CREATE_NEW == UINT64_C(1));
     assert(BAURA_FS_CREATE_ALWAYS == UINT64_C(2));
+    assert(baura_security_authorize(81, BAURA_ABI_CAP_FS_READ) ==
+           BAURA_ERR_INVALID_STATE);
+    platform.abi_version = BAURA_CORE_PLATFORM_ABI_VERSION;
+    platform.struct_size = sizeof(platform);
+    platform.boot_info = &boot_info_validations;
+    platform.validate_boot_info = validate_boot_info_fixture;
+    platform.boot_info_context = &boot_info_validations;
+    platform.console_write = console_write_fixture;
+    platform.console_context = &console_output_length;
+    platform.authority_check = authority_check_fixture;
+    platform.start_graphical_service = start_graphical_service_fixture;
+    platform.graphical_service_context = &graphical_service_starts;
+    graphical_service_starts = 0;
     console_output_length = 0;
+    boot_info_validations = 0;
+    platform.abi_version++;
+    assert(baura_core_initial_task_start(&platform) ==
+           BAURA_ERR_INVALID_ARGUMENT);
+    platform.abi_version = BAURA_CORE_PLATFORM_ABI_VERSION;
+    platform.struct_size = sizeof(platform) - 1u;
+    assert(baura_core_initial_task_start(&platform) ==
+           BAURA_ERR_INVALID_ARGUMENT);
+    platform.struct_size = sizeof(platform);
+    platform.validate_boot_info = 0;
+    assert(baura_core_initial_task_start(&platform) ==
+           BAURA_ERR_INVALID_ARGUMENT);
+    assert(boot_info_validations == 0);
+    platform.validate_boot_info = validate_boot_info_fixture;
+    boot_info_validation_result = BAURA_ERR_INVALID_ARGUMENT;
+    assert(baura_core_initial_task_start(&platform) ==
+           BAURA_ERR_INVALID_ARGUMENT);
+    assert(boot_info_validations == 1);
+    assert(baura_system_state() == BAURA_SYSTEM_COLD);
+    boot_info_validation_result = BAURA_OK;
     assert(baura_core_initial_task_start(0) == BAURA_ERR_INVALID_ARGUMENT);
     assert(baura_core_initial_task_start(&platform) == BAURA_OK);
+    assert(boot_info_validations == 2);
+    assert(graphical_service_starts == 1);
+    assert(baura_security_authorize(81, BAURA_ABI_CAP_FS_READ) == BAURA_OK);
+    assert(baura_security_authorize(81, BAURA_ABI_CAP_FS_WRITE) ==
+           BAURA_ERR_PERMISSION);
     assert(console_output_length == sizeof(expected_console) - 1u);
     assert(memcmp(console_output, expected_console, console_output_length) == 0);
     assert(baura_core_initial_task_start(&platform) == BAURA_ERR_INVALID_STATE);
@@ -188,7 +286,15 @@ static void test_services_and_processes(void) {
     uint64_t parent_id;
     uint64_t child_id;
     BauraProcessInfo process;
+    BauraProcessBackend backend = {
+        process_start_fixture,
+        process_set_state_fixture,
+        process_terminate_fixture,
+        0
+    };
     starts_seen = 0; stops_seen = 0;
+    assert(baura_service_register("invalid", 0, service_stop, 0, &service_id) ==
+           BAURA_ERR_INVALID_ARGUMENT);
     assert(baura_service_register("storage", service_start, service_stop, 0, &service_id) == BAURA_OK);
     assert(baura_service_start(service_id) == BAURA_OK && starts_seen == 1);
     assert(baura_service_stop(service_id) == BAURA_OK && stops_seen == 1);
@@ -199,6 +305,23 @@ static void test_services_and_processes(void) {
     assert(baura_process_set_state(parent_id, BAURA_PROCESS_TERMINATED) == BAURA_OK);
     assert(baura_process_query(child_id, &process) == BAURA_OK);
     assert(process.parent_id == parent_id && process.state == BAURA_PROCESS_READY);
+    assert(baura_process_launch("worker", "PC/C:/System/worker.elf", "--once",
+                                0, &child_id) == BAURA_ERR_INVALID_STATE);
+    assert(baura_process_set_backend(&backend) == BAURA_OK);
+    test_task_terminations = 0;
+    assert(baura_process_launch("worker", "PC/C:/System/worker.elf", "--once",
+                                0, &child_id) == BAURA_OK);
+    assert(baura_process_query(child_id, &process) == BAURA_OK);
+    assert(process.state == BAURA_PROCESS_RUNNING);
+    assert(baura_process_set_state(child_id, BAURA_PROCESS_BLOCKED) == BAURA_OK);
+    assert(test_task_state == BAURA_PROCESS_BLOCKED);
+    assert(baura_process_set_state(child_id, BAURA_PROCESS_TERMINATED) == BAURA_OK);
+    assert(test_task_terminations == 1);
+    assert(baura_process_launch("worker", "PC/C:/System/worker.elf", 0,
+                                0, &child_id) == BAURA_OK);
+    assert(baura_process_set_state(child_id, BAURA_PROCESS_TERMINATED) == BAURA_OK);
+    assert(test_task_terminations == 2);
+    assert(baura_process_set_backend(0) == BAURA_OK);
 }
 
 static void test_metrics_and_counters(void) {
@@ -227,11 +350,21 @@ static void test_volume_storage(void) {
     uint8_t input[32];
     uint8_t output[32];
     uint32_t volume_id;
+    BauraPathInfo path_info;
     BauraBlockDevice device = {memory_disk, 4, 16, memory_read, memory_write};
     memset(memory_disk, 0, sizeof(memory_disk));
     memset(input, 0xA5, sizeof(input));
     assert(baura_volume_register("C", 1, &device) == BAURA_OK);
     assert(baura_volume_get_id("C", &volume_id) == BAURA_OK && volume_id == 1);
+    assert(baura_vfs_resolve_path("PC/C://Users/./Ahmed//Documents/", &path_info) ==
+           BAURA_VFS_OK);
+    assert(path_info.volume_id == volume_id);
+    assert(path_info.path_len == strlen("Users/Ahmed/Documents"));
+    assert(strcmp(path_info.path, "Users/Ahmed/Documents") == 0);
+    assert(baura_vfs_resolve_path("PC/C:/Users/../secret", &path_info) ==
+           BAURA_VFS_ERR_INVALID_PATH);
+    assert(baura_vfs_resolve_path("PC/D:/file", &path_info) ==
+           BAURA_VFS_ERR_VOLUME_NOT_FOUND);
     assert(baura_storage_write(volume_id, 1, 2, input) == BAURA_OK);
     assert(baura_storage_read(volume_id, 1, 2, output) == BAURA_OK);
     assert(memcmp(input, output, sizeof(input)) == 0);

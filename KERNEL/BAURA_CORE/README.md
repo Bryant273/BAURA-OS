@@ -8,8 +8,8 @@ BAURA Core is a freestanding service layer above the low-level kernel. The curre
 - Configuration: bounded in-memory key/value store. It is not persisted across reboot.
 - Event bus: bounded synchronous topic subscriptions with unsubscribe tokens. It is single-core and not yet synchronized for concurrent callers.
 - Logging: fixed-size circular log with chronological reads.
-- Service manager: bounded registry with explicit start/stop callbacks and state queries. Callbacks must not block.
-- Process manager: process metadata and state transitions only; it does not create or schedule kernel tasks.
+- Service manager: bounded registry with explicit start/stop callbacks and state queries. Registration now requires a real start callback; callbacks must not block. The manager does not create seL4 service tasks by itself.
+- Process manager: retains metadata-only registration for bookkeeping and adds a task-backend contract for launch, state changes, and termination. Launch fails explicitly until a platform backend is bound; no seL4 task-creation backend is wired in this repository yet.
 - Resource manager: per-owner counter quotas, initially deny-by-default. It is accounting, not a physical allocator.
 - Monitoring and performance: fixed-size metric history and overflow-safe counters; sampling sources are not connected to hardware yet.
 - Fault and recovery: bounded fault history and code-to-handler dispatch. Recovery handlers must implement any actual restart or remediation.
@@ -21,20 +21,39 @@ BAURA Core is a freestanding service layer above the low-level kernel. The curre
 - Update manager: verify/apply/rollback state machine delegated to backend callbacks; it does not download or cryptographically verify packages itself.
 - Virtualization: provider-gated VM lifecycle; no hypervisor provider is installed in the boot image.
 - System API: guarded facade for configuration, process queries, and logs.
-- Security: bounded C capability spaces with revocation and attenuating delegation, initialized at boot. The tables are single-core and kernel-internal; caller authorization and concurrency protection are not yet connected to seL4 capabilities. The Rust crate remains a separate reference/test implementation.
-- VFS parser: bounded canonical path parsing in Rust with unit tests. Volume discovery and physical filesystem operations are not connected yet.
+- Security: bounded C capability policy tables with revocation and attenuating delegation, initialized at boot. They are not seL4 capabilities. The initial-task platform can bind an explicit authority-check callback; authorization returns `BAURA_ERR_INVALID_STATE` when no checker is installed rather than allowing by default. The callback still needs a concrete seL4 service/capability implementation.
+- VFS: the C path API resolves canonical `PC/<volume>:/...` paths against registered volume IDs and normalizes separators and `.` components while rejecting traversal. The Rust parser remains a separate reference implementation. There is still no mounted filesystem operation table or physical filesystem implementation.
 - System API/ABI v2: `SYSTEM_API/API_ABI_v2.json` defines the normative wire contract and `SYSTEM_API/baura_abi_v2.h` exposes its scalar types, stable status/error values, capability names, opcodes, and reference-operation IDs. `SYSTEM_API/baura_ipc_v2.c` encodes/decodes frames byte-by-byte and validates the five reference request/response shapes; `make test-abi` runs host codec tests and is included by `make test-core`. A freestanding x86_64 Core archive and an x86_64 seL4 kernel build target now exist, but the default boot target remains 32-bit Multiboot; no callable seL4 IPC transport, service dispatcher, or filesystem/process/memory/network backend is integrated. See `SYSTEM_API/API_ABI_v2_STATUS.md` for binding and implementation limits.
-- Initial task entry: `SYSTEM_API/baura_core_initial_task_start` starts the existing BAURA Core services and reports readiness through an injected console callback. It deliberately consumes no guessed `BootInfo`; a real initial task must validate the seL4-provided boot information and capabilities and bind an authorized console service before invoking this entry point.
+- Initial task entry: `SYSTEM_API/baura_core_initial_task_start` requires a versioned platform contract, an opaque boot-info pointer, and a platform-supplied validator before initializing Core. It rejects unsupported contract versions or undersized structures before calling platform callbacks. Its optional, size-gated GUI-start extension invokes a platform callback after Core initialization; the GUI bridge can register/start its runtime through the Core service manager. This keeps the BAURA API independent of a guessed or kernel-specific `BootInfo` layout. The current code does not provide a seL4 validator, an initial-task executable, framebuffer mapping, or authorized PS/2 callbacks; a platform adapter must supply these before the graphical hook can start a real desktop.
+- UART console adapter: `SYSTEM_API/baura_uart_console_write` adapts the BOOT UART driver to the Core console callback. Its port access remains injected and must be authorized by the running platform; it is not directly callable against hardware by default.
+
+The seL4 source is currently declared as a Git submodule at `KERNEL/L4/sel4`
+in `.gitmodules`. The separate roadmap
+[`KERNEL/L4/ROADMAP_MICROKERNEL_BAURA.md`](../L4/ROADMAP_MICROKERNEL_BAURA.md)
+describes the intended transition: use the checked-in seL4 version as an
+unchanged reference/baseline, and eventually replace it with a BAURA-owned
+microkernel implementation. Vendoring seL4 is a distinct repository operation:
+it would copy and track the upstream source here, preserve its licensing
+notices, and require deliberate update management; this checkout has not yet
+been converted from a submodule.
 
 ## Build and tests
 
 `make test-core` builds/runs the host-side C integration tests and ABI codec tests. `make test-core-x86_64` runs the C integration tests with a 64-bit host ABI and asserts the x86_64 target define. `make baura-core-x86_64` builds a freestanding x86_64 static Core archive using `x86_64-elf-gcc` and `x86_64-elf-ar`. `make sel4-kernel-x86_64` configures the checked-in seL4 source for its `pc99` x86_64 platform with kernel printing enabled, then builds the `kernel.elf` target. `make baura-x86_64` builds both artifacts. They remain separate: the Core archive is not yet a seL4 initial-task executable, and this target does not create a bootable combined image. A cross CMake toolchain can be supplied with `SEL4_CMAKE_ARGS`, for example `SEL4_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=C:/toolchains/x86_64.cmake"`. `make test-rust` runs the Rust VFS and security unit tests. The legacy `make iso` and `make run` still build and launch the existing 32-bit Multiboot test image; they are not the x86_64/seL4 path.
 
-`baura_core_initial_task_start` initializes BAURA Core and reports readiness
-through a caller-provided console callback. A future seL4 initial task must
-validate the actual seL4 boot information and capabilities before calling it
-and supply a console implementation through an authorized service; this API
-does not parse or fabricate a local `BootInfo` contract.
+The targeted host suites for the adjacent boot, communication, and GUI
+contracts are `make test-boot`, `make test-communication`, and `make test-gui`;
+`make test-integration` runs these plus `test-core`. Passing these host tests
+does not establish UEFI, seL4, hardware-I/O, IPC, or display-device integration.
+
+`baura_core_initial_task_start` requires an opaque boot-info object and a
+platform validator, initializes BAURA Core only if validation succeeds, and
+reports readiness through a caller-provided console callback. An optional
+size-gated callback can start graphical service integration only after Core
+initialization. The API does not parse or fabricate a kernel-specific
+`BootInfo` contract. The platform adapter must validate the actual seL4 boot
+information and capabilities and provide authorized console, display, and
+input resources; the GUI callback does not discover or map devices.
 
 The seL4 kernel target is an x86_64 kernel build only. It does not assert that
 the resulting ELF is GRUB-loadable, does not create an initial task, and does

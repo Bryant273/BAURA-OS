@@ -3,6 +3,10 @@
 
 #include "../baura_core_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define BAURA_SERVICE_CAPACITY 32u
 
 typedef enum {
@@ -25,5 +29,9 @@ BauraStatus baura_service_start(uint32_t id);
 BauraStatus baura_service_stop(uint32_t id);
 BauraStatus baura_service_query(uint32_t id, BauraServiceInfo *info);
 uint32_t baura_service_count(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
