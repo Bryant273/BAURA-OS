@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#if defined(BAURA_TARGET_X86_64) && UINTPTR_MAX != UINT64_MAX
+#error "BAURA_TARGET_X86_64 requires a 64-bit target"
+#endif
+
 typedef enum {
     BAURA_OK = 0,
     BAURA_ERR_INVALID_ARGUMENT = -1,

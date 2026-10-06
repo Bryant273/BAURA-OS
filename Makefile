@@ -5,8 +5,15 @@ NASM ?= nasm
 GRUB_FILE ?= grub-file
 GRUB_MKRESCUE ?= grub-mkrescue
 HOST_CC ?= cc
+HOST_CMAKE ?= cmake
+X86_64_CROSS_COMPILE ?= x86_64-elf-
+X86_64_CC := $(X86_64_CROSS_COMPILE)gcc
+X86_64_AR := $(X86_64_CROSS_COMPILE)ar
 BUILD_DIR := build
 ISO_ROOT := $(BUILD_DIR)/iso
+SEL4_SOURCE_DIR := KERNEL/L4/sel4
+SEL4_X86_64_BUILD_DIR := $(BUILD_DIR)/sel4-x86_64
+SEL4_CMAKE_ARGS ?=
 CFLAGS := -std=gnu11 -m32 -ffreestanding -fno-pic -fno-pie -fno-stack-protector -fno-builtin -Wall -Wextra -Werror -O2
 LDFLAGS := -m elf_i386 -T linker.ld -nostdlib
 
@@ -38,8 +45,18 @@ CORE_SOURCES := \
     KERNEL/BAURA_CORE/SYSTEM_API/baura_system_api.c
 CORE_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(CORE_SOURCES))
 CORE_TEST_SOURCES := $(filter-out KERNEL/BAURA_CORE/kernel_main.c KERNEL/BAURA_CORE/runtime.c,$(CORE_SOURCES))
+X86_64_CORE_SOURCES := $(filter-out KERNEL/BAURA_CORE/kernel_main.c,$(CORE_SOURCES)) \
+    KERNEL/BAURA_CORE/runtime.c \
+    KERNEL/BAURA_CORE/SYSTEM_API/baura_ipc_v2.c \
+    KERNEL/BAURA_CORE/SYSTEM_API/baura_core_entry.c
+X86_64_CORE_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/x86_64/%.o,$(X86_64_CORE_SOURCES))
+CORE_TEST_SOURCES += KERNEL/BAURA_CORE/SYSTEM_API/baura_ipc_v2.c \
+    KERNEL/BAURA_CORE/SYSTEM_API/baura_core_entry.c
+X86_64_CFLAGS ?= -std=gnu11 -m64 -ffreestanding -fno-pic -fno-pie -fno-stack-protector -fno-builtin -Wall -Wextra -Werror -O2 -DBAURA_TARGET_X86_64=1
 
-.PHONY: all iso run test-core test-rust clean
+.PHONY: all iso run test-core test-core-x86_64 test-abi test-rust \
+	baura-core-x86_64 sel4-configure-x86_64 sel4-kernel-x86_64 \
+	baura-x86_64 clean
 
 all: baura_os.elf
 
@@ -55,6 +72,25 @@ $(BUILD_DIR)/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/x86_64/%.o: %.c
+	mkdir -p $(@D)
+	$(X86_64_CC) $(X86_64_CFLAGS) -c $< -o $@
+
+baura-core-x86_64: $(BUILD_DIR)/x86_64/libbaura_core.a
+
+$(BUILD_DIR)/x86_64/libbaura_core.a: $(X86_64_CORE_OBJECTS)
+	$(X86_64_AR) rcs $@ $^
+
+sel4-configure-x86_64:
+	$(HOST_CMAKE) -S $(SEL4_SOURCE_DIR) -B $(SEL4_X86_64_BUILD_DIR) \
+		-DPLATFORM=pc99 -DKernelSel4Arch=x86_64 -DKernelPrinting=ON \
+		$(SEL4_CMAKE_ARGS)
+
+sel4-kernel-x86_64: sel4-configure-x86_64
+	$(HOST_CMAKE) --build $(SEL4_X86_64_BUILD_DIR) --target kernel.elf
+
+baura-x86_64: baura-core-x86_64 sel4-kernel-x86_64
+
 iso: baura_os.iso
 
 baura_os.iso: baura_os.elf grub.cfg
@@ -66,10 +102,21 @@ baura_os.iso: baura_os.elf grub.cfg
 run: baura_os.iso
 	qemu-system-i386 -cdrom baura_os.iso -serial stdio -no-reboot -no-shutdown
 
-test-core:
+test-core: test-abi
 	mkdir -p $(BUILD_DIR)
 	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I. -o $(BUILD_DIR)/core_services_test KERNEL/BAURA_CORE/tests/core_services_test.c $(CORE_TEST_SOURCES)
 	$(BUILD_DIR)/core_services_test
+
+test-abi:
+	mkdir -p $(BUILD_DIR)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I. -o $(BUILD_DIR)/baura_ipc_v2_test KERNEL/BAURA_CORE/tests/baura_ipc_v2_test.c KERNEL/BAURA_CORE/SYSTEM_API/baura_ipc_v2.c
+	$(BUILD_DIR)/baura_ipc_v2_test
+
+test-core-x86_64: test-abi
+	mkdir -p $(BUILD_DIR)/x86_64
+	$(HOST_CC) -m64 -std=c11 -Wall -Wextra -Werror -DBAURA_TARGET_X86_64=1 -I. -o $(BUILD_DIR)/x86_64/core_services_test KERNEL/BAURA_CORE/tests/core_services_test.c $(CORE_TEST_SOURCES)
+	$(BUILD_DIR)/x86_64/core_services_test
+
 test-rust:
 	cargo test --manifest-path KERNEL/BAURA_CORE/STORAGE/VFS/Cargo.toml
 	cargo test --manifest-path KERNEL/BAURA_CORE/SECURITY/Cargo.toml

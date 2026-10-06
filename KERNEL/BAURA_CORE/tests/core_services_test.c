@@ -17,12 +17,40 @@
 #include "../NETWORK/baura_network.h"
 #include "../POWER_MANAGER/baura_power_manager.h"
 #include "../SYSTEM_API/baura_system_api.h"
+#include "../SYSTEM_API/baura_core_entry.h"
 #include "../PROCESS_MANAGER/baura_process_manager.h"
 #include "../RESOURCE_MANAGER/baura_resource_manager.h"
 #include "../SERVICE_MANAGER/baura_service_manager.h"
 #include "../SECURITY/BAURA_SECURITY_RUST.h"
 #include "../STORAGE/baura_storage.h"
 #include "../STORAGE/VOLUME_MANAGER/volume_manager.h"
+
+_Static_assert(sizeof(BauraSize) == 8, "BAURA_SIZE must be 64-bit");
+_Static_assert(sizeof(BauraOffset) == 8, "BAURA_OFFSET must be 64-bit");
+_Static_assert(sizeof(BauraFileHandle) == 8, "BAURA_FILE_HANDLE must be 64-bit");
+#if defined(BAURA_TARGET_X86_64)
+_Static_assert(sizeof(void *) == 8, "x86_64 Core builds require 64-bit pointers");
+#endif
+_Static_assert(BAURA_ABI_STATUS_SUCCESS == 0, "ABI success value must remain stable");
+_Static_assert(BAURA_ABI_STATUS_PENDING == 2, "ABI pending value must remain stable");
+_Static_assert(BAURA_ABI_ERR_INVALID_ARGUMENT == 0x1001,
+               "ABI error values must remain stable");
+_Static_assert(BAURA_ABI_ERR_INTERNAL == 0x100E,
+               "ABI error values must remain stable");
+_Static_assert(BAURA_IPC_HEADER_SIZE == 32u, "IPC header size must remain stable");
+_Static_assert(BAURA_IPC_MAGIC == UINT32_C(0x52554142), "IPC magic must remain stable");
+_Static_assert(BAURA_IPC_MAX_PAYLOAD == 16384u, "IPC payload limit must remain stable");
+_Static_assert(BAURA_IPC_REQUEST_ID_OFFSET == 16u, "IPC header offsets must remain stable");
+_Static_assert(BAURA_ABI_OPCODE_FS_CREATE == UINT32_C(0x00010001),
+               "FS create opcode must remain stable");
+_Static_assert(BAURA_ABI_OPCODE_FS_READ == UINT32_C(0x00010002),
+               "FS read opcode must remain stable");
+_Static_assert(BAURA_ABI_OPCODE_PROCESS_CREATE == UINT32_C(0x00020001),
+               "Process create opcode must remain stable");
+_Static_assert(BAURA_ABI_OPCODE_MEMORY_ALLOCATE == UINT32_C(0x00030001),
+               "Memory allocate opcode must remain stable");
+_Static_assert(BAURA_ABI_OPCODE_NETWORK_CONNECT == UINT32_C(0x00040001),
+               "Network connect opcode must remain stable");
 
 static uint32_t events_seen;
 static uint32_t starts_seen;
@@ -34,6 +62,17 @@ static BauraPowerProfile applied_power;
 static uint32_t rollbacks_seen;
 static uint32_t destroyed_vms;
 static uint8_t updates_succeed;
+static char console_output[32];
+static size_t console_output_length;
+
+static BauraStatus console_write_fixture(void *context, const char *text, size_t length) {
+    size_t index;
+    size_t *written = (size_t *)context;
+    if (length > sizeof(console_output)) return BAURA_ERR_LIMIT;
+    for (index = 0; index < length; ++index) console_output[index] = text[index];
+    *written = length;
+    return BAURA_OK;
+}
 
 static void on_event(const BauraEvent *event, void *context) {
     uint32_t *value = (uint32_t *)context;
@@ -98,7 +137,23 @@ static BauraStatus service_stop(void *context) {
 
 static void test_system_and_configuration(void) {
     char value[16];
-    assert(baura_system_start() == BAURA_OK);
+    BauraCorePlatform platform = {console_write_fixture, &console_output_length};
+    static const char expected_console[] = "BAURA OS Core ready\r\n";
+    assert(BAURA_ABI_VERSION_MAJOR == 2u && BAURA_ABI_VERSION_MINOR == 0u);
+    assert(strcmp(BAURA_ABI_OP_FS_CREATE, "FS-0001") == 0);
+    assert(strcmp(BAURA_ABI_OP_FS_READ, "FS-0002") == 0);
+    assert(strcmp(BAURA_ABI_OP_PROCESS_CREATE, "PR-0001") == 0);
+    assert(strcmp(BAURA_ABI_OP_MEMORY_ALLOCATE, "MEM-0001") == 0);
+    assert(strcmp(BAURA_ABI_OP_NETWORK_CONNECT, "NET-0001") == 0);
+    assert(strcmp(BAURA_ABI_SYMBOL_NETWORK_CONNECT, "BAURA_NET_CONNECT") == 0);
+    assert(BAURA_FS_CREATE_NEW == UINT64_C(1));
+    assert(BAURA_FS_CREATE_ALWAYS == UINT64_C(2));
+    console_output_length = 0;
+    assert(baura_core_initial_task_start(0) == BAURA_ERR_INVALID_ARGUMENT);
+    assert(baura_core_initial_task_start(&platform) == BAURA_OK);
+    assert(console_output_length == sizeof(expected_console) - 1u);
+    assert(memcmp(console_output, expected_console, console_output_length) == 0);
+    assert(baura_core_initial_task_start(&platform) == BAURA_ERR_INVALID_STATE);
     assert(baura_system_start() == BAURA_OK);
     assert(baura_system_state() == BAURA_SYSTEM_READY);
     assert(baura_config_set("user.locale", "") == BAURA_OK);

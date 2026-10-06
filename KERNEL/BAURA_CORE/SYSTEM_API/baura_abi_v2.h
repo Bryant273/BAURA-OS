@@ -1,0 +1,103 @@
+#ifndef BAURA_ABI_V2_H
+#define BAURA_ABI_V2_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define BAURA_ABI_VERSION_MAJOR 2u
+#define BAURA_ABI_VERSION_MINOR 0u
+#define BAURA_ABI_DEFAULT
+
+#define BAURA_IPC_MAGIC UINT32_C(0x52554142)
+#define BAURA_IPC_HEADER_SIZE 32u
+#define BAURA_IPC_MAX_PAYLOAD 16384u
+#define BAURA_IPC_MAGIC_OFFSET 0u
+#define BAURA_IPC_MAJOR_OFFSET 4u
+#define BAURA_IPC_MINOR_OFFSET 6u
+#define BAURA_IPC_KIND_OFFSET 8u
+#define BAURA_IPC_FLAGS_OFFSET 10u
+#define BAURA_IPC_OPCODE_OFFSET 12u
+#define BAURA_IPC_REQUEST_ID_OFFSET 16u
+#define BAURA_IPC_PAYLOAD_SIZE_OFFSET 24u
+#define BAURA_IPC_ATTACHMENT_COUNT_OFFSET 28u
+#define BAURA_IPC_RESERVED_OFFSET 30u
+#define BAURA_IPC_KIND_REQUEST 1u
+#define BAURA_IPC_KIND_RESPONSE 2u
+#define BAURA_IPC_KIND_COMPLETION 3u
+
+/* Strings are UTF-8; paths use PC/<drive>:/<path>; timeouts are milliseconds. */
+typedef const char *BauraPath;
+typedef const char *BauraString;
+typedef uint64_t BauraSize;
+typedef int64_t BauraOffset;
+typedef uint64_t BauraFlags;
+typedef uint64_t BauraTimeout;
+/* Buffers remain owned by the caller. */
+typedef void *BauraBuffer;
+typedef uint64_t BauraFileHandle;
+typedef uint64_t BauraProcessId;
+typedef uint64_t BauraThreadId;
+
+typedef enum {
+    BAURA_ABI_STATUS_SUCCESS = 0,
+    BAURA_ABI_STATUS_FAILURE = 1,
+    BAURA_ABI_STATUS_PENDING = 2
+} BauraAbiStatus;
+
+typedef enum {
+    BAURA_ABI_ERR_INVALID_ARGUMENT = 0x1001,
+    BAURA_ABI_ERR_INVALID_PATH = 0x1002,
+    BAURA_ABI_ERR_NOT_FOUND = 0x1003,
+    BAURA_ABI_ERR_ALREADY_EXISTS = 0x1004,
+    BAURA_ABI_ERR_PERMISSION = 0x1005,
+    BAURA_ABI_ERR_CAPABILITY = 0x1006,
+    BAURA_ABI_ERR_UNAVAILABLE = 0x1007,
+    BAURA_ABI_ERR_TIMEOUT = 0x1008,
+    BAURA_ABI_ERR_NO_MEMORY = 0x1009,
+    BAURA_ABI_ERR_IO = 0x100A,
+    BAURA_ABI_ERR_INVALID_HANDLE = 0x100B,
+    BAURA_ABI_ERR_NOT_SUPPORTED = 0x100C,
+    BAURA_ABI_ERR_SECURITY = 0x100D,
+    BAURA_ABI_ERR_INTERNAL = 0x100E
+} BauraAbiError;
+
+#define BAURA_ABI_OPCODE_FS_CREATE UINT32_C(0x00010001)
+#define BAURA_ABI_OPCODE_FS_READ UINT32_C(0x00010002)
+#define BAURA_ABI_OPCODE_PROCESS_CREATE UINT32_C(0x00020001)
+#define BAURA_ABI_OPCODE_MEMORY_ALLOCATE UINT32_C(0x00030001)
+#define BAURA_ABI_OPCODE_NETWORK_CONNECT UINT32_C(0x00040001)
+
+#define BAURA_FS_CREATE_NEW UINT64_C(0x1)
+#define BAURA_FS_CREATE_ALWAYS UINT64_C(0x2)
+
+#define BAURA_ABI_CAP_FS_READ "cap.fs.read"
+#define BAURA_ABI_CAP_FS_WRITE "cap.fs.write"
+#define BAURA_ABI_CAP_PROCESS_CREATE "cap.process.create"
+#define BAURA_ABI_CAP_PROCESS_CONTROL "cap.process.control"
+#define BAURA_ABI_CAP_MEMORY_MAP "cap.memory.map"
+#define BAURA_ABI_CAP_NETWORK_CONNECT "cap.network.connect"
+#define BAURA_ABI_CAP_DEVICE_ACCESS "cap.device.access"
+#define BAURA_ABI_CAP_SECURITY_ADMIN "cap.security.admin"
+#define BAURA_ABI_CAP_PACKAGE_INSTALL "cap.package.install"
+#define BAURA_ABI_CAP_GUI_CREATE "cap.gui.create"
+
+#define BAURA_ABI_OP_FS_CREATE "FS-0001"
+#define BAURA_ABI_OP_FS_READ "FS-0002"
+#define BAURA_ABI_OP_PROCESS_CREATE "PR-0001"
+#define BAURA_ABI_OP_MEMORY_ALLOCATE "MEM-0001"
+#define BAURA_ABI_OP_NETWORK_CONNECT "NET-0001"
+
+#define BAURA_ABI_SYMBOL_FS_CREATE "BAURA_FS_CREATE"
+#define BAURA_ABI_SYMBOL_FS_READ "BAURA_FS_READ"
+#define BAURA_ABI_SYMBOL_PROCESS_CREATE "BAURA_PROC_CREATE"
+#define BAURA_ABI_SYMBOL_MEMORY_ALLOCATE "BAURA_MEM_ALLOC"
+#define BAURA_ABI_SYMBOL_NETWORK_CONNECT "BAURA_NET_CONNECT"
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

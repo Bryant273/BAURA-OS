@@ -2,6 +2,7 @@
 #define BAURA_SYSTEM_API_H
 
 #include "../baura_core_types.h"
+#include "baura_abi_v2.h"
 #include "../LOGGING/baura_logging.h"
 #include "../PROCESS_MANAGER/baura_process_manager.h"
 

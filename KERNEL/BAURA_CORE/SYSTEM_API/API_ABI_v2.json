@@ -1,0 +1,743 @@
+{
+  "specification": {
+    "name": "BAURA OS System API/ABI Dictionary",
+    "version": "2.0",
+    "status": "engineering-specification",
+    "principle": "Une fonction système, un concept sémantique, plusieurs interfaces.",
+    "catalogue": {
+      "domains": 100,
+      "operations": 100000,
+      "operations_per_domain": 1000
+    }
+  },
+  "architecture": {
+    "concept": "BAURA semantic contract",
+    "api": "BAURA API",
+    "abi": "BAURA ABI",
+    "call_mechanism": "IPC",
+    "security_model": "capability-based",
+    "implementation_layer": "BAURA Core",
+    "kernel": "L4/seL4",
+    "shell": "BAURA Shell"
+  },
+  "target_abi": {
+    "architecture": "x86_64",
+    "byte_order": "little-endian",
+    "native_pointer_width_bits": 64,
+    "wire_protocol_is_architecture_independent": true,
+    "calling_convention": "BAURA_ABI_DEFAULT remains a target-toolchain binding; v2 does not mandate a register/stack convention."
+  },
+  "ipc_protocol": {
+    "name": "BAURA IPC Wire Protocol",
+    "version": "2.0",
+    "byte_order": "little-endian",
+    "encoding": "All integer fields use their specified fixed width, little-endian. Signed integers use two's-complement representation. Payload fields are concatenated in listed order with no alignment padding. Frames are byte sequences; implementations must not serialize native C structs or pointers directly.",
+    "header": {
+      "size_bytes": 32,
+      "fields": [
+        {"name": "magic", "offset": 0, "type": "u32", "value": "0x52554142", "bytes_ascii": "BAUR"},
+        {"name": "major", "offset": 4, "type": "u16", "value": 2},
+        {"name": "minor", "offset": 6, "type": "u16", "value": 0},
+        {"name": "kind", "offset": 8, "type": "u16", "values": {"REQUEST": 1, "RESPONSE": 2, "COMPLETION": 3}},
+        {"name": "flags", "offset": 10, "type": "u16", "value": 0},
+        {"name": "opcode", "offset": 12, "type": "u32"},
+        {"name": "request_id", "offset": 16, "type": "u64", "constraint": "Nonzero and unique among outstanding requests from one client."},
+        {"name": "payload_bytes", "offset": 24, "type": "u32", "constraint": "Number of bytes following the 32-byte header; excludes out-of-band capability attachments."},
+        {"name": "attachment_count", "offset": 28, "type": "u16"},
+        {"name": "reserved", "offset": 30, "type": "u16", "value": 0}
+      ]
+    },
+    "framing": {
+      "maximum_payload_bytes": 16384,
+      "fragmentation": "Not supported in v2. Each operation defines any permitted shared-memory attachments; arbitrary oversized payloads are not implicitly moved to shared memory. The receiver returns BAURA_ERR_INVALID_ARGUMENT for payloads exceeding the limit.",
+      "attachments": "Attachments are kernel-transferred capabilities, not integer handles encoded as authority in the payload. The receiver validates the object type and rights required by the operation. Attachment ordinals in payloads are zero-based and must be less than attachment_count.",
+      "validation": "Reject bad magic, unsupported major/minor, unknown kind/opcode, nonzero reserved fields or flags, inconsistent payload length, any attachment count not exactly specified for that operation and message direction, and malformed operation payloads. A rejected request must not perform the requested side effect.",
+      "capability_authorization": "The caller must hold the service endpoint capability and the operation-specific capability named by the operation contract. The receiving service validates authorization before processing arguments or causing side effects. Transport endpoint capabilities are supplied by the selected L4 binding and are not serialized as pointer values."
+    },
+    "response_payload": {
+      "prefix_size_bytes": 8,
+      "fields": [
+        {"name": "status", "offset": 0, "type": "u32", "values": {"SUCCESS": 0, "FAILURE": 1, "PENDING": 2}},
+        {"name": "error", "offset": 4, "type": "u32", "values": {"SUCCESS_OR_PENDING": 0, "FAILURE": "A nonzero BAURA_ERR_* value"}}
+      ],
+      "rules": [
+        "A RESPONSE echoes the request opcode and request_id.",
+        "SUCCESS has error zero and is followed by the operation's success result, if any.",
+        "FAILURE has a nonzero error and no operation result bytes or attachments.",
+        "PENDING has error zero and no result bytes or attachments; it is allowed only for operations declared non-blocking.",
+        "A COMPLETION echoes the opcode and request_id for an earlier PENDING response, is terminal (SUCCESS or FAILURE only), and uses the normal response payload format.",
+        "A successful RESPONSE or COMPLETION carries exactly the success-result attachment count declared for that operation. FAILURE and PENDING carry zero attachments.",
+        "COMPLETE synchronous requests with RESPONSE; never send both a terminal RESPONSE and a COMPLETION for the same request_id."
+      ]
+    },
+    "strings": {
+      "encoding": "UTF-8",
+      "format": "u32 byte_length followed by exactly byte_length bytes; no NUL terminator is transmitted.",
+      "embedded_nul": "Forbidden; reject any string containing byte 0.",
+      "maximum_path_bytes": 255,
+      "maximum_string_bytes": 4096,
+      "path_format": "Canonical PC/<drive>:/<path> as specified by VFS_SPEC.md. Reject malformed or over-limit paths."
+    },
+    "shared_memory": {
+      "descriptor": "u16 attachment_ordinal, u16 reserved_zero, u64 offset, u64 length",
+      "rules": [
+        "The range must fit entirely in the attached memory object without integer overflow.",
+        "The client retains ownership of the memory object; the attachment grants only the operation-required access for the request lifetime.",
+        "The service must validate the transferred capability type, rights, range, and lifetime before accessing memory.",
+        "A returned BAURA_BUFFER is represented by a transferred memory capability attachment and a u64 byte length, never by a process-local pointer."
+      ]
+    },
+    "operation_opcodes": {
+      "FS-0001": "0x00010001",
+      "FS-0002": "0x00010002",
+      "PR-0001": "0x00020001",
+      "MEM-0001": "0x00030001",
+      "NET-0001": "0x00040001"
+    },
+    "status_values": {"BAURA_STATUS_SUCCESS": 0, "BAURA_STATUS_FAILURE": 1, "BAURA_STATUS_PENDING": 2},
+    "error_values": {
+      "BAURA_ERR_INVALID_ARGUMENT": "0x1001",
+      "BAURA_ERR_INVALID_PATH": "0x1002",
+      "BAURA_ERR_NOT_FOUND": "0x1003",
+      "BAURA_ERR_ALREADY_EXISTS": "0x1004",
+      "BAURA_ERR_PERMISSION": "0x1005",
+      "BAURA_ERR_CAPABILITY": "0x1006",
+      "BAURA_ERR_UNAVAILABLE": "0x1007",
+      "BAURA_ERR_TIMEOUT": "0x1008",
+      "BAURA_ERR_NO_MEMORY": "0x1009",
+      "BAURA_ERR_IO": "0x100A",
+      "BAURA_ERR_INVALID_HANDLE": "0x100B",
+      "BAURA_ERR_NOT_SUPPORTED": "0x100C",
+      "BAURA_ERR_SECURITY": "0x100D",
+      "BAURA_ERR_INTERNAL": "0x100E"
+    }
+  },
+  "schema": {
+    "operation_required": [
+      "id",
+      "domain",
+      "concept",
+      "api",
+      "abi",
+      "wire_payload",
+      "requires",
+      "errors",
+      "mappings",
+      "shell",
+      "execution",
+      "version"
+    ],
+    "parameter_required": [
+      "name",
+      "type",
+      "direction",
+      "required"
+    ],
+    "wire_payload_required": [
+      "request",
+      "response_success",
+      "request_attachments",
+      "response_attachments"
+    ],
+    "directions": [
+      "in",
+      "out",
+      "inout"
+    ],
+    "call_mechanisms": [
+      "IPC",
+      "shared_memory",
+      "event",
+      "RPC"
+    ],
+    "blocking_models": [
+      "blocking",
+      "non_blocking"
+    ]
+  },
+  "types": {
+    "BAURA_PATH": {
+      "kind": "string",
+      "encoding": "UTF-8",
+      "canonical_format": "PC/<drive>:/<path>"
+    },
+    "BAURA_STRING": {
+      "kind": "string",
+      "encoding": "UTF-8"
+    },
+    "BAURA_SIZE": {
+      "kind": "u64"
+    },
+    "BAURA_OFFSET": {
+      "kind": "i64"
+    },
+    "BAURA_FLAGS": {
+      "kind": "u64"
+    },
+    "BAURA_TIMEOUT": {
+      "kind": "u64",
+      "unit": "milliseconds"
+    },
+    "BAURA_BUFFER": {
+      "kind": "pointer",
+      "ownership": "caller"
+    },
+    "BAURA_FILE_HANDLE": {
+      "kind": "handle",
+      "width": 64
+    },
+    "BAURA_PROCESS_ID": {
+      "kind": "u64"
+    },
+    "BAURA_THREAD_ID": {
+      "kind": "u64"
+    },
+    "BAURA_STATUS": {
+      "kind": "enum",
+      "values": [
+        "SUCCESS",
+        "FAILURE",
+        "PENDING"
+      ]
+    }
+  },
+  "errors": {
+    "BAURA_ERR_INVALID_ARGUMENT": "Argument invalide",
+    "BAURA_ERR_INVALID_PATH": "Chemin invalide",
+    "BAURA_ERR_NOT_FOUND": "Ressource inexistante",
+    "BAURA_ERR_ALREADY_EXISTS": "Ressource déjà existante",
+    "BAURA_ERR_PERMISSION": "Permission refusée",
+    "BAURA_ERR_CAPABILITY": "Capability insuffisante",
+    "BAURA_ERR_UNAVAILABLE": "Ressource indisponible",
+    "BAURA_ERR_TIMEOUT": "Délai dépassé",
+    "BAURA_ERR_NO_MEMORY": "Mémoire insuffisante",
+    "BAURA_ERR_IO": "Erreur d'entrée/sortie",
+    "BAURA_ERR_INVALID_HANDLE": "Handle invalide",
+    "BAURA_ERR_NOT_SUPPORTED": "Opération non supportée",
+    "BAURA_ERR_SECURITY": "Violation de sécurité",
+    "BAURA_ERR_INTERNAL": "Erreur interne"
+  },
+  "capabilities": {
+    "cap.fs.read": "Lire des fichiers",
+    "cap.fs.write": "Créer ou modifier des fichiers",
+    "cap.process.create": "Créer des processus",
+    "cap.process.control": "Contrôler des processus",
+    "cap.memory.map": "Mapper de la mémoire",
+    "cap.network.connect": "Établir des connexions réseau",
+    "cap.device.access": "Accéder aux périphériques",
+    "cap.security.admin": "Administrer la sécurité",
+    "cap.package.install": "Installer des paquets",
+    "cap.gui.create": "Créer des surfaces ou fenêtres"
+  },
+  "reference_implementable_operations": [
+    {
+      "id": "FS-0001",
+      "domain": "filesystem",
+      "concept": {
+        "name": "CreateFile",
+        "description": "Créer un fichier"
+      },
+      "api": {
+        "name": "Files.Create",
+        "signature": "Files.Create(path, options)",
+        "parameters": [
+          {
+            "name": "path",
+            "type": "BAURA_PATH",
+            "direction": "in",
+            "required": true
+          },
+          {
+            "name": "options",
+            "type": "BAURA_FLAGS",
+            "direction": "in",
+            "required": false
+          }
+        ],
+        "return": {
+          "type": "BAURA_FILE_HANDLE",
+          "semantic": "Handle du fichier créé"
+        }
+      },
+      "abi": {
+        "symbol": "BAURA_FS_CREATE",
+        "opcode": "0x00010001",
+        "calling_convention": "BAURA_ABI_DEFAULT",
+        "mechanism": "IPC",
+        "target_service": "filesystem.service",
+        "parameter_layout": [
+          "BAURA_PATH*",
+          "BAURA_FLAGS"
+        ],
+        "return_type": "BAURA_FILE_HANDLE"
+      },
+      "wire_payload": {
+        "request": [
+          "u32 path_byte_length",
+          "u8 path[path_byte_length] (UTF-8, canonical BAURA path)",
+          "u64 options"
+        ],
+        "response_success": ["u64 file_handle"],
+        "request_attachments": 0,
+        "response_attachments": 0,
+        "option_bits": {"CREATE_NEW": "0x1", "CREATE_ALWAYS": "0x2"},
+        "semantics": "options=0 creates only when absent and fails with BAURA_ERR_ALREADY_EXISTS when present. CREATE_NEW has the same exclusive behavior. CREATE_ALWAYS creates when absent and replaces/truncates an existing file. The two named bits are mutually exclusive; all other bits are invalid."
+      },
+      "requires": {
+        "capabilities": [
+          "cap.fs.write"
+        ],
+        "permissions": [
+          "filesystem.write"
+        ]
+      },
+      "errors": [
+        "BAURA_ERR_INVALID_PATH",
+        "BAURA_ERR_PERMISSION",
+        "BAURA_ERR_ALREADY_EXISTS",
+        "BAURA_ERR_IO"
+      ],
+      "mappings": {
+        "linux_posix": {
+          "equivalent": "open()",
+          "mapping": [
+            "O_CREAT"
+          ],
+          "translation_required": true
+        },
+        "windows": {
+          "equivalent": "CreateFile()",
+          "mapping": [
+            "CREATE_NEW",
+            "CREATE_ALWAYS"
+          ],
+          "translation_required": true
+        }
+      },
+      "shell": {
+        "command": "create-file",
+        "example": "create-file PC/C:/Ahmed/test.txt"
+      },
+      "execution": {
+        "layer": "BAURA Core",
+        "kernel_dependency": "L4/seL4 IPC",
+        "blocking": false
+      },
+      "version": "1.0"
+    },
+    {
+      "id": "FS-0002",
+      "domain": "filesystem",
+      "concept": {
+        "name": "ReadFile",
+        "description": "Lire des données depuis un fichier"
+      },
+      "api": {
+        "name": "Files.Read",
+        "signature": "Files.Read(handle, buffer, size, offset)",
+        "parameters": [
+          {
+            "name": "handle",
+            "type": "BAURA_FILE_HANDLE",
+            "direction": "in",
+            "required": true
+          },
+          {
+            "name": "buffer",
+            "type": "BAURA_BUFFER",
+            "direction": "out",
+            "required": true
+          },
+          {
+            "name": "size",
+            "type": "BAURA_SIZE",
+            "direction": "in",
+            "required": true
+          },
+          {
+            "name": "offset",
+            "type": "BAURA_OFFSET",
+            "direction": "in",
+            "required": false
+          }
+        ],
+        "return": {
+          "type": "BAURA_SIZE",
+          "semantic": "Nombre d'octets lus"
+        }
+      },
+      "abi": {
+        "symbol": "BAURA_FS_READ",
+        "opcode": "0x00010002",
+        "calling_convention": "BAURA_ABI_DEFAULT",
+        "mechanism": "IPC",
+        "target_service": "filesystem.service",
+        "parameter_layout": [
+          "BAURA_FILE_HANDLE",
+          "BAURA_BUFFER*",
+          "BAURA_SIZE",
+          "BAURA_OFFSET"
+        ],
+        "return_type": "BAURA_SIZE"
+      },
+      "wire_payload": {
+        "request": [
+          "u64 file_handle",
+          "u64 size (nonzero)",
+          "i64 offset (-1 means use and advance the service-maintained sequential cursor; nonnegative means positioned read; values below -1 are invalid)",
+          "u16 attachment_ordinal",
+          "u16 reserved_zero",
+          "u64 buffer_offset (the descriptor length is the request's size field; it is not repeated)"
+        ],
+        "response_success": ["u64 bytes_read"],
+        "request_attachments": 1,
+        "response_attachments": 0,
+        "attachment_rights": "The client transfers one shared-memory capability writable by filesystem.service for this request. size bytes starting at buffer_offset must fit in the attached object.",
+        "semantics": "A nonnegative offset is a positioned read and does not modify the sequential cursor. Offset -1 reads at and advances that cursor. A short read is successful and reports the actual byte count."
+      },
+      "requires": {
+        "capabilities": [
+          "cap.fs.read"
+        ],
+        "permissions": [
+          "filesystem.read"
+        ]
+      },
+      "errors": [
+        "BAURA_ERR_INVALID_HANDLE",
+        "BAURA_ERR_PERMISSION",
+        "BAURA_ERR_IO"
+      ],
+      "mappings": {
+        "linux_posix": {
+          "equivalent": "read()/pread()",
+          "mapping": [
+            "read",
+            "pread"
+          ],
+          "translation_required": true
+        },
+        "windows": {
+          "equivalent": "ReadFile()",
+          "mapping": [
+            "ReadFile"
+          ],
+          "translation_required": true
+        }
+      },
+      "shell": {
+        "command": "read",
+        "example": "read PC/C:/Ahmed/test.txt"
+      },
+      "execution": {
+        "layer": "BAURA Core",
+        "kernel_dependency": "L4/seL4 IPC + memory mapping",
+        "blocking": true
+      },
+      "version": "1.0"
+    },
+    {
+      "id": "PR-0001",
+      "domain": "process",
+      "concept": {
+        "name": "CreateProcess",
+        "description": "Créer un processus isolé"
+      },
+      "api": {
+        "name": "Processes.Create",
+        "signature": "Processes.Create(image, arguments, options)",
+        "parameters": [
+          {
+            "name": "image",
+            "type": "BAURA_PATH",
+            "direction": "in",
+            "required": true
+          },
+          {
+            "name": "arguments",
+            "type": "BAURA_STRING",
+            "direction": "in",
+            "required": false
+          },
+          {
+            "name": "options",
+            "type": "BAURA_FLAGS",
+            "direction": "in",
+            "required": false
+          }
+        ],
+        "return": {
+          "type": "BAURA_PROCESS_ID",
+          "semantic": "Identifiant du processus"
+        }
+      },
+      "abi": {
+        "symbol": "BAURA_PROC_CREATE",
+        "opcode": "0x00020001",
+        "calling_convention": "BAURA_ABI_DEFAULT",
+        "mechanism": "IPC",
+        "target_service": "process.service",
+        "parameter_layout": [
+          "BAURA_PATH*",
+          "BAURA_STRING*",
+          "BAURA_FLAGS"
+        ],
+        "return_type": "BAURA_PROCESS_ID"
+      },
+      "wire_payload": {
+        "request": [
+          "u32 image_byte_length",
+          "u8 image[image_byte_length] (UTF-8, canonical BAURA path)",
+          "u32 arguments_byte_length (zero means no arguments)",
+          "u8 arguments[arguments_byte_length] (UTF-8)",
+          "u64 options (must be zero in v2.0)"
+        ],
+        "response_success": ["u64 process_id"],
+        "request_attachments": 0,
+        "response_attachments": 0,
+        "semantics": "Success means an isolated process was created and is ready according to process.service. Recording process metadata alone is not successful implementation."
+      },
+      "requires": {
+        "capabilities": [
+          "cap.process.create"
+        ],
+        "permissions": [
+          "process.create"
+        ]
+      },
+      "errors": [
+        "BAURA_ERR_INVALID_PATH",
+        "BAURA_ERR_PERMISSION",
+        "BAURA_ERR_CAPABILITY",
+        "BAURA_ERR_NO_MEMORY"
+      ],
+      "mappings": {
+        "linux_posix": {
+          "equivalent": "clone()+execve()",
+          "mapping": [
+            "clone",
+            "execve"
+          ],
+          "translation_required": true
+        },
+        "windows": {
+          "equivalent": "CreateProcess()",
+          "mapping": [
+            "CreateProcess"
+          ],
+          "translation_required": true
+        }
+      },
+      "shell": {
+        "command": "start-process",
+        "example": "start-process PC/C:/Programs/app.aesb"
+      },
+      "execution": {
+        "layer": "BAURA Core",
+        "kernel_dependency": "L4/seL4 task/thread/capability",
+        "blocking": false
+      },
+      "version": "1.0"
+    },
+    {
+      "id": "MEM-0001",
+      "domain": "memory",
+      "concept": {
+        "name": "AllocateMemory",
+        "description": "Allouer une région mémoire"
+      },
+      "api": {
+        "name": "Memory.Allocate",
+        "signature": "Memory.Allocate(size, flags)",
+        "parameters": [
+          {
+            "name": "size",
+            "type": "BAURA_SIZE",
+            "direction": "in",
+            "required": true
+          },
+          {
+            "name": "flags",
+            "type": "BAURA_FLAGS",
+            "direction": "in",
+            "required": false
+          }
+        ],
+        "return": {
+          "type": "BAURA_BUFFER",
+          "semantic": "Région mémoire allouée"
+        }
+      },
+      "abi": {
+        "symbol": "BAURA_MEM_ALLOC",
+        "opcode": "0x00030001",
+        "calling_convention": "BAURA_ABI_DEFAULT",
+        "mechanism": "IPC",
+        "target_service": "memory.service",
+        "parameter_layout": [
+          "BAURA_SIZE",
+          "BAURA_FLAGS"
+        ],
+        "return_type": "BAURA_BUFFER"
+      },
+      "wire_payload": {
+        "request": ["u64 size (nonzero)", "u64 flags (must be zero in v2.0)"],
+        "response_success": ["u64 allocated_bytes"],
+        "request_attachments": 0,
+        "response_attachments": 1,
+        "attachment_rights": "The service transfers one shared-memory capability granting the caller read/write access to the allocated region.",
+        "semantics": "The attachment object size must equal allocated_bytes and be at least the requested size. The result is not a process-local pointer."
+      },
+      "requires": {
+        "capabilities": [
+          "cap.memory.map"
+        ],
+        "permissions": [
+          "memory.allocate"
+        ]
+      },
+      "errors": [
+        "BAURA_ERR_NO_MEMORY",
+        "BAURA_ERR_INVALID_ARGUMENT",
+        "BAURA_ERR_CAPABILITY"
+      ],
+      "mappings": {
+        "linux_posix": {
+          "equivalent": "mmap()",
+          "mapping": [
+            "mmap"
+          ],
+          "translation_required": true
+        },
+        "windows": {
+          "equivalent": "VirtualAlloc()",
+          "mapping": [
+            "VirtualAlloc"
+          ],
+          "translation_required": true
+        }
+      },
+      "shell": {
+        "command": "memory-info",
+        "example": "memory-info"
+      },
+      "execution": {
+        "layer": "BAURA Core",
+        "kernel_dependency": "L4/seL4 memory manager",
+        "blocking": false
+      },
+      "version": "1.0"
+    },
+    {
+      "id": "NET-0001",
+      "domain": "network",
+      "concept": {
+        "name": "Connect",
+        "description": "Établir une connexion réseau"
+      },
+      "api": {
+        "name": "Network.Connect",
+        "signature": "Network.Connect(endpoint, options)",
+        "parameters": [
+          {
+            "name": "endpoint",
+            "type": "BAURA_STRING",
+            "direction": "in",
+            "required": true
+          },
+          {
+            "name": "options",
+            "type": "BAURA_FLAGS",
+            "direction": "in",
+            "required": false
+          }
+        ],
+        "return": {
+          "type": "BAURA_STATUS",
+          "semantic": "État de l'opération"
+        }
+      },
+      "abi": {
+        "symbol": "BAURA_NET_CONNECT",
+        "opcode": "0x00040001",
+        "calling_convention": "BAURA_ABI_DEFAULT",
+        "mechanism": "IPC",
+        "target_service": "network.service",
+        "parameter_layout": [
+          "BAURA_STRING*",
+          "BAURA_FLAGS"
+        ],
+        "return_type": "BAURA_STATUS"
+      },
+      "wire_payload": {
+        "request": [
+          "u32 endpoint_byte_length",
+          "u8 endpoint[endpoint_byte_length] (UTF-8)",
+          "u64 options (must be zero in v2.0)"
+        ],
+        "response_success": [],
+        "request_attachments": 0,
+        "response_attachments": 0,
+        "semantics": "SUCCESS means the network service established the requested connection. Because this operation is blocking, PENDING is invalid for it in v2.0."
+      },
+      "requires": {
+        "capabilities": [
+          "cap.network.connect"
+        ],
+        "permissions": [
+          "network.connect"
+        ]
+      },
+      "errors": [
+        "BAURA_ERR_INVALID_ARGUMENT",
+        "BAURA_ERR_PERMISSION",
+        "BAURA_ERR_TIMEOUT",
+        "BAURA_ERR_UNAVAILABLE"
+      ],
+      "mappings": {
+        "linux_posix": {
+          "equivalent": "connect()",
+          "mapping": [
+            "connect"
+          ],
+          "translation_required": true
+        },
+        "windows": {
+          "equivalent": "Winsock connect()",
+          "mapping": [
+            "connect"
+          ],
+          "translation_required": true
+        }
+      },
+      "shell": {
+        "command": "connect",
+        "example": "connect 192.168.1.10:443"
+      },
+      "execution": {
+        "layer": "BAURA Core",
+        "kernel_dependency": "L4/seL4 IPC + network service",
+        "blocking": true
+      },
+      "version": "1.0"
+    }
+  ],
+  "domains": {
+    "total": 100,
+    "operations_per_domain": 1000,
+    "total_operations": 100000,
+    "rule": "Chaque opération du catalogue doit être instanciée selon le schéma complet avant d'être considérée comme ABI implémentable."
+  },
+  "implementation_rules": {
+    "abi_stability": true,
+    "typed_parameters_required": true,
+    "typed_return_required": true,
+    "errors_required": true,
+    "capabilities_required_for_sensitive_operations": true,
+    "permissions_required_for_sensitive_operations": true,
+    "call_mechanism_required": true,
+    "linux_posix_mapping_required_when_equivalent_exists": true,
+    "windows_mapping_required_when_equivalent_exists": true,
+    "guest_os_required_for_normal_windows_linux_execution": false
+  }
+}

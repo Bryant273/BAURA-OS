@@ -17,4 +17,5 @@ Cargo.lock
 Thumbs.db
 
 # Build directory
+build/
 INFRASTRUCTURE/BUILD/

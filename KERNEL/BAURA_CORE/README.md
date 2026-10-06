@@ -23,10 +23,24 @@ BAURA Core is a freestanding service layer above the low-level kernel. The curre
 - System API: guarded facade for configuration, process queries, and logs.
 - Security: bounded C capability spaces with revocation and attenuating delegation, initialized at boot. The tables are single-core and kernel-internal; caller authorization and concurrency protection are not yet connected to seL4 capabilities. The Rust crate remains a separate reference/test implementation.
 - VFS parser: bounded canonical path parsing in Rust with unit tests. Volume discovery and physical filesystem operations are not connected yet.
+- System API/ABI v2: `SYSTEM_API/API_ABI_v2.json` defines the normative wire contract and `SYSTEM_API/baura_abi_v2.h` exposes its scalar types, stable status/error values, capability names, opcodes, and reference-operation IDs. `SYSTEM_API/baura_ipc_v2.c` encodes/decodes frames byte-by-byte and validates the five reference request/response shapes; `make test-abi` runs host codec tests and is included by `make test-core`. A freestanding x86_64 Core archive and an x86_64 seL4 kernel build target now exist, but the default boot target remains 32-bit Multiboot; no callable seL4 IPC transport, service dispatcher, or filesystem/process/memory/network backend is integrated. See `SYSTEM_API/API_ABI_v2_STATUS.md` for binding and implementation limits.
+- Initial task entry: `SYSTEM_API/baura_core_initial_task_start` starts the existing BAURA Core services and reports readiness through an injected console callback. It deliberately consumes no guessed `BootInfo`; a real initial task must validate the seL4-provided boot information and capabilities and bind an authorized console service before invoking this entry point.
 
 ## Build and tests
 
-`make test-core` builds/runs the host-side C integration tests. `make test-rust` runs the Rust VFS and security unit tests. `make iso` creates the Multiboot test image and `make run` launches it in QEMU when the required cross-compiler, NASM, GRUB tools, and QEMU are installed.
+`make test-core` builds/runs the host-side C integration tests and ABI codec tests. `make test-core-x86_64` runs the C integration tests with a 64-bit host ABI and asserts the x86_64 target define. `make baura-core-x86_64` builds a freestanding x86_64 static Core archive using `x86_64-elf-gcc` and `x86_64-elf-ar`. `make sel4-kernel-x86_64` configures the checked-in seL4 source for its `pc99` x86_64 platform with kernel printing enabled, then builds the `kernel.elf` target. `make baura-x86_64` builds both artifacts. They remain separate: the Core archive is not yet a seL4 initial-task executable, and this target does not create a bootable combined image. A cross CMake toolchain can be supplied with `SEL4_CMAKE_ARGS`, for example `SEL4_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=C:/toolchains/x86_64.cmake"`. `make test-rust` runs the Rust VFS and security unit tests. The legacy `make iso` and `make run` still build and launch the existing 32-bit Multiboot test image; they are not the x86_64/seL4 path.
+
+`baura_core_initial_task_start` initializes BAURA Core and reports readiness
+through a caller-provided console callback. A future seL4 initial task must
+validate the actual seL4 boot information and capabilities before calling it
+and supply a console implementation through an authorized service; this API
+does not parse or fabricate a local `BootInfo` contract.
+
+The seL4 kernel target is an x86_64 kernel build only. It does not assert that
+the resulting ELF is GRUB-loadable, does not create an initial task, and does
+not combine the BAURA archive with seL4. Confirm the seL4 loader protocol,
+initial-task image format, boot information, and capability handoff for this
+exact configuration before wiring a UEFI/GRUB image.
 
 ## Next integrations
 
