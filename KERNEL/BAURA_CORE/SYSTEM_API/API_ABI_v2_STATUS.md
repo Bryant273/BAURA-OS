@@ -4,6 +4,41 @@
 version 2.0. The JSON is the semantic and field-layout source of truth; the C
 header exposes stable values and IDs to Core consumers.
 
+`check_abi_v2.py` checks the JSON syntax and its reference-operation set,
+header offsets, magic, version, payload limit, reserved/flag values, message
+kinds, status values, opcodes, IDs, and error values against the public C
+header. It also checks that duplicated JSON status/opcode tables agree and
+that operation symbols, attachment counts, and blocking behavior match the
+reference codec's supported operation set.
+`make test-abi` runs this consistency check before compiling/running the C
+codec tests. This verifies contract drift at source level; it does not prove a
+transport, dispatcher, service backend, or runtime ABI binding.
+
+## Binding inventory
+
+| Language/interface | Current state | Not provided |
+| --- | --- | --- |
+| C | Public v2 constants and host-testable wire codec | seL4 IPC transport, dispatcher, callable service stubs |
+| Rust | Driver-isolation native C FFI contract | v2 wire codec or seL4 adapter |
+| Go | Local callback message bus in `COMMUNICATION/MESSAGE_BUS/bus.go` | v2 wire client, cross-process IPC, network stack or firewall |
+
+The Rust driver contract and Go callback bus are not BAURA ABI v2 bindings.
+Do not treat them as interchangeable transports. A Rust or Go v2 binding should
+be added only with shared conformance vectors and a defined platform transport;
+the C consistency check does not validate either language today.
+
+Device discovery and driver management are also not exposed by API/ABI v2.
+BAURA Core's current PCI registry is an internal callback interface; it is not
+a hardware syscall or a device-management service. Its implementation status
+and the missing seL4 hardware-resource backend are tracked in
+[`DEVICE_DRIVER_STATUS.md`](../DEVICE_DRIVER_STATUS.md).
+
+The experimental `KERNEL/L4/syscall_table.c` is not a binding for this wire
+ABI: it casts Core VFS/security functions to an incompatible generic function
+pointer and is not part of the configured seL4 build. Do not link it as an
+application syscall path. BAURA operations use service IPC; kernel syscalls are
+the selected microkernel's mechanism interface.
+
 The native BAURA target is PC x86_64 (little-endian, 64-bit pointers). Wire
 fields use explicit fixed widths and byte-wise encoding, so host-side codec
 tests do not depend on the host pointer width. `BAURA_ABI_DEFAULT` remains

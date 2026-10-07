@@ -226,7 +226,7 @@ static BauraIpcV2Result validate_header_and_payload(
     if (header->major != (uint16_t)BAURA_ABI_VERSION_MAJOR ||
         header->minor != (uint16_t)BAURA_ABI_VERSION_MINOR)
         return BAURA_IPC_V2_ERR_UNSUPPORTED_VERSION;
-    if (header->flags != 0 || header->request_id == 0u ||
+    if (header->flags != BAURA_IPC_FLAGS_VALUE || header->request_id == 0u ||
         header->payload_bytes > BAURA_IPC_MAX_PAYLOAD) return BAURA_IPC_V2_ERR_MALFORMED_FRAME;
     if (!is_known_opcode(header->opcode)) return BAURA_IPC_V2_ERR_UNKNOWN_OPCODE;
 
@@ -272,7 +272,7 @@ BauraIpcV2Result baura_ipc_v2_encode_frame(
     write_u64_le(frame + BAURA_IPC_REQUEST_ID_OFFSET, header->request_id);
     write_u32_le(frame + BAURA_IPC_PAYLOAD_SIZE_OFFSET, header->payload_bytes);
     write_u16_le(frame + BAURA_IPC_ATTACHMENT_COUNT_OFFSET, header->attachment_count);
-    write_u16_le(frame + BAURA_IPC_RESERVED_OFFSET, 0u);
+    write_u16_le(frame + BAURA_IPC_RESERVED_OFFSET, BAURA_IPC_RESERVED_VALUE);
     for (index = 0; index < payload_size; ++index)
         frame[BAURA_IPC_HEADER_SIZE + index] = payload[index];
     *frame_size = required_size;
@@ -291,7 +291,7 @@ BauraIpcV2Result baura_ipc_v2_decode_frame(
         return BAURA_IPC_V2_ERR_INVALID_ARGUMENT;
     if (frame_size < BAURA_IPC_HEADER_SIZE ||
         read_u32_le(frame + BAURA_IPC_MAGIC_OFFSET) != BAURA_IPC_MAGIC ||
-        read_u16_le(frame + BAURA_IPC_RESERVED_OFFSET) != 0)
+        read_u16_le(frame + BAURA_IPC_RESERVED_OFFSET) != BAURA_IPC_RESERVED_VALUE)
         return BAURA_IPC_V2_ERR_MALFORMED_FRAME;
 
     header->major = read_u16_le(frame + BAURA_IPC_MAJOR_OFFSET);

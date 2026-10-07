@@ -14,6 +14,7 @@
 #include "../DESKTOP/baura_desktop.h"
 #include "../LOGIN_SCREEN/login_screen.h"
 #include "../UI_FRAMEWORK/BAURA_UI_FRAMEWORK.h"
+#include "../UI_FRAMEWORK/baura_brand.h"
 #include "../UI_FRAMEWORK/baura_hybrid_taskbar.h"
 #include "../UI_FRAMEWORK/papirus_icon_catalog.h"
 #include "../UI_FRAMEWORK/system_bubble.h"
@@ -133,10 +134,12 @@ static void test_gui_platform_service() {
     BauraGuiPlatform first;
     BauraGuiPlatform second;
     MockPs2 platform_input{};
+    MockPs2 bgr_input{};
     BauraPs2Io platform_io{
         mock_ps2_read, mock_ps2_write, &platform_input};
+    BauraPs2Io bgr_io{mock_ps2_read, mock_ps2_write, &bgr_input};
     assert(first.initialize(rgb, &platform_io));
-    assert(second.initialize(bgr));
+    assert(second.initialize(bgr, &bgr_io));
     service_manager_init();
     BauraGuiServiceBinding binding{&first, 0};
     assert(baura_gui_core_service_start(&binding) == BAURA_OK);
@@ -144,10 +147,6 @@ static void test_gui_platform_service() {
     BauraServiceInfo service{};
     assert(baura_service_query(binding.service_id, &service) == BAURA_OK);
     assert(service.state == BAURA_SERVICE_RUNNING);
-    mock_ps2_push(&platform_input, 0x08, true);
-    mock_ps2_push(&platform_input, 0x01, true);
-    mock_ps2_push(&platform_input, 0x00, true);
-    assert(first.poll_input() == 1);
     assert(second.start());
     for (uint32_t y = 0; y < 4; ++y) {
         for (uint32_t x = 0; x < 8; ++x) {
@@ -158,6 +157,10 @@ static void test_gui_platform_service() {
             assert(framebuffer_rgb[offset + 3] == 0);
         }
     }
+    mock_ps2_push(&platform_input, 0x08, true);
+    mock_ps2_push(&platform_input, 0x01, true);
+    mock_ps2_push(&platform_input, 0x00, true);
+    assert(first.poll_input() == 1);
     assert(baura_gui_core_service_stop(&binding) == BAURA_OK);
     assert(!first.ready());
     assert(baura_service_query(binding.service_id, &service) == BAURA_OK);
@@ -265,7 +268,7 @@ int main() {
     assert(red_window != 0 && blue_window != 0);
     assert(gui_compose(compositor) == BAURA_GUI_OK);
     assert(framebuffer[0] == 0xFF0000FFu);
-    assert(framebuffer[1] == 0xFFFF0000u);
+    assert(framebuffer[1] == 0xFF000000u);
     assert(framebuffer[5] == 0xFFFF0000u);
     assert(framebuffer[4] == 0xDEADBEEFu);
     assert(presents == 1);
@@ -346,6 +349,13 @@ int main() {
                               sizeof(desktop_pixels) / sizeof(desktop_pixels[0])};
     BGERenderer renderer(desktop_fb);
     assert(renderer.valid());
+    renderer.clear(0xFF000000u);
+    BauraBrand::draw_mark(renderer, 10, 10, 56);
+    assert(renderer.pixel(38, 38) != 0xFF000000u);
+    renderer.clear(0xFF000000u);
+    BauraBrand::draw_boot_splash(renderer);
+    assert(renderer.pixel(0, 0) == 0xFF101827u);
+    assert(renderer.pixel(400, 300) != 0xFF101827u);
     renderer.clear(0xFF000000u);
     renderer.draw_pixel_alpha(1, 1, 0xFFFF0000u, 128);
     assert(renderer.pixel(1, 1) == 0xFF800000u);

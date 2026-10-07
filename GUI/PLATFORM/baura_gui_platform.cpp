@@ -242,18 +242,18 @@ void BauraGuiPlatform::handle_event(const BauraPs2Event &event) {
             0, std::min<int64_t>(target.height - 1u, next_y)));
         const uint8_t pressed = event.data.mouse.buttons & 1u;
         if (pressed != 0 && (mouse_buttons & 1u) == 0) {
-            desktop->process_event(EventType::CLICK,
-                                   static_cast<int>(pointer_x),
-                                   static_cast<int>(pointer_y));
+            desktop->handle_pointer(BGEPointerEvent::PRESS,
+                                    static_cast<int>(pointer_x),
+                                    static_cast<int>(pointer_y));
         }
         if (pressed == 0 && (mouse_buttons & 1u) != 0) {
-            desktop->process_event(EventType::RELEASE,
-                                   static_cast<int>(pointer_x),
-                                   static_cast<int>(pointer_y));
+            desktop->handle_pointer(BGEPointerEvent::RELEASE,
+                                    static_cast<int>(pointer_x),
+                                    static_cast<int>(pointer_y));
         } else if (pressed != 0) {
-            desktop->process_event(EventType::DRAG,
-                                   static_cast<int>(pointer_x),
-                                   static_cast<int>(pointer_y));
+            desktop->handle_pointer(BGEPointerEvent::MOVE,
+                                    static_cast<int>(pointer_x),
+                                    static_cast<int>(pointer_y));
         }
         mouse_buttons = event.data.mouse.buttons;
     } else if (event.type == BAURA_PS2_EVENT_KEY &&

@@ -8,6 +8,9 @@ typedef struct {
     uint32_t writes;
     uint32_t reads;
     uint8_t ready;
+    uint8_t divisor_low;
+    uint8_t divisor_high;
+    uint8_t divisor_latch_enabled;
     char output[16];
     uint32_t output_length;
 } FakeUart;
@@ -15,6 +18,14 @@ typedef struct {
 static int write_port(void *context, uint16_t port, uint8_t value) {
     FakeUart *fake = (FakeUart *)context;
     ++fake->writes;
+    if (port == BAURA_UART_COM1 + 3u) {
+        fake->divisor_latch_enabled = (value & 0x80u) != 0;
+    } else if (port == BAURA_UART_COM1 && fake->divisor_latch_enabled) {
+        fake->divisor_low = value;
+    } else if (port == BAURA_UART_COM1 + 1u &&
+               fake->divisor_latch_enabled) {
+        fake->divisor_high = value;
+    }
     if (port == BAURA_UART_COM1 && fake->ready) {
         fake->output[fake->output_length++] = (char)value;
     }
@@ -36,6 +47,7 @@ int main(void) {
     assert(uart_putc(&uart, 'x') == BAURA_UART_ERR_STATE);
     assert(uart_init(&uart, &io) == BAURA_UART_OK);
     assert(fake.writes == 7);
+    assert(fake.divisor_low == 1 && fake.divisor_high == 0);
     assert(uart_write(&uart, "BAURA", 5) == BAURA_UART_ERR_TIMEOUT);
     fake.ready = 1;
     assert(uart_write(&uart, "BAURA", 5) == BAURA_UART_OK);

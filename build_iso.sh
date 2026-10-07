@@ -2,6 +2,6 @@
 set -euo pipefail
 
 make clean
-make iso
+make legacy32-iso
 
-printf 'ISO créée : baura_os.iso\n'
+printf 'ISO legacy x86 32 bits créée : baura_os.iso\n'

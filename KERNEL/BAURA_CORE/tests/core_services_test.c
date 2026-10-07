@@ -410,14 +410,21 @@ static void test_hardware_update_virtualization(void) {
 
 static void test_pci_registry(void) {
     BauraDevice device;
+    assert(baura_hardware_refresh() == BAURA_ERR_INVALID_STATE);
+    assert(baura_driver_register_pci(0xFFFF, 0x1234, probe_storage, 0) ==
+           BAURA_ERR_INVALID_ARGUMENT);
     assert(dev_set_pci_reader(pci_fixture, 0) == BAURA_OK);
     assert(baura_driver_register(DEV_TYPE_STORAGE, probe_storage, (void *)(uintptr_t)1) == BAURA_OK);
+    assert(baura_driver_register_pci(0x8086, 0x1234, probe_storage,
+                                     (void *)(uintptr_t)2) == BAURA_OK);
     assert(baura_hardware_refresh() == BAURA_OK);
     assert(dev_device_count() == 1);
     assert(dev_get_device(0, &device) == BAURA_OK);
     assert(device.vendor_id == 0x8086 && device.product_id == 0x1234);
     assert(device.type == DEV_TYPE_STORAGE && device.irq_line == 11);
-    assert(device.driver_attached == 1 && device.driver_handle == (void *)(uintptr_t)1);
+    assert(device.bar_count == 6 && device.bar_valid_mask == 1u);
+    assert(device.bars[0] == 0xFEBF0000u);
+    assert(device.driver_attached == 1 && device.driver_handle == (void *)(uintptr_t)2);
 }
 
 static void test_capability_security(void) {

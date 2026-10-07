@@ -39,11 +39,19 @@ signifie pas que le Core remplace seL4 ou peut s’accorder des droits matériel
 
 ## État de départ vérifié dans le dépôt
 
-- La cible de démarrage par défaut (`BOOT/boot.asm`, `grub.cfg`) est encore le
-  bring-up Multiboot 32 bits ; elle ne lance pas la cible seL4 x86_64.
-- Le Makefile configure seL4 avec `PLATFORM=pc99`, `KernelSel4Arch=x86_64` et
-  `KernelPrinting=ON`, et construit le noyau séparément. Il ne construit pas
-  encore l’image de tâche initiale BAURA ni une image de démarrage combinée.
+- Le chemin `BOOT/boot.asm`/GRUB est encore un bring-up Multiboot 32 bits ; il
+  ne lance pas seL4. `make` sélectionne maintenant par défaut les artefacts
+  séparés Core x86_64 et noyau seL4 x86_64 ; il ne produit pas encore une
+  image intégrée ni une tâche initiale BAURA. Le chemin 32 bits est conservé
+  sous `legacy32`, `legacy32-iso` et `run-legacy32` (avec les anciens alias
+  `iso`/`run` pour compatibilité).
+- Le Makefile configure seL4 avec `KernelPlatform=pc99`,
+  `KernelSel4Arch=x86_64`, `KernelVerificationBuild=OFF` et
+  `KernelPrinting=ON`, puis construit le noyau séparément. L'impression série
+  est désactivée par défaut avec une configuration seL4 vérifiée ; le mode
+  actuel est un build de développement et ne revendique pas de vérification
+  formelle. Il ne construit pas encore l’image de tâche initiale BAURA ni une
+  image de démarrage combinée.
 - Le contrat Core garde le BootInfo opaque et vérifie l’entrée via un
   validateur fourni par la plateforme. Aucun validateur/adaptateur seL4
   concret n’est actuellement lié.
@@ -54,6 +62,10 @@ signifie pas que le Core remplace seL4 ou peut s’accorder des droits matériel
 - Le runtime GUI accepte un framebuffer 32 bits RGBX/BGRX déjà mappé et le
   pilote PS/2 utilise des callbacks d’E/S fournis par l’appelant. Aucun code
   ne procure actuellement ce mapping, les capacités de ports ou des IRQ.
+- Le noyau Multiboot 32 bits initialise maintenant le pilote série 16550
+  COM1 via des callbacks x86 de ring 0 pour ses messages de démarrage. Cette
+  intégration destinée à QEMU n’est pas l’adaptateur seL4 et ne délègue aucune
+  capacité matérielle à une tâche utilisateur.
 - Le démarrage actuel du runtime ne constitue pas encore un service graphique
   persistant : `start()` dessine une première image puis rend la main. Il n’y
   a pas encore de tâche GUI dédiée ni de boucle d’événements au démarrage.

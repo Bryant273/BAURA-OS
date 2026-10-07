@@ -24,6 +24,11 @@
 - `DESKTOP/`, `LOGIN_SCREEN/`, `UI_FRAMEWORK/`, and
   `BOOT/INSTALLER/installer_gui.*` provide the desktop widgets, login and
   installer presentation, and callback-driven interaction.
+- `UI_FRAMEWORK/baura_brand.h` draws the shared BAURA mark and wordmark with
+  software-renderer primitives. The mark is used by the desktop, Start menu and
+  button, notification surfaces, progress bubbles, login, and installer. Its
+  framebuffer-based `draw_boot_splash` function provides a branded startup
+  screen for a future display-capable boot stage.
 - `BAURA_GUI_FFI.h/.cpp` exposes surface, framebuffer, compositor, and window
   operations to C callers. Compositor handles retain their display server, so
   destroying the caller's display handle cannot leave a dangling compositor.

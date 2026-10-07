@@ -1,5 +1,6 @@
 #include "baura_desktop.h"
 
+#include "../UI_FRAMEWORK/baura_brand.h"
 #include "../UI_FRAMEWORK/baura_theme.h"
 
 #include <algorithm>
@@ -63,6 +64,13 @@ void BauraDesktop::render_frame(BGERenderer &renderer, float animation_phase) {
                                static_cast<int>(fb.height) / 4, glow_width,
                                glow_height, glow_width / 2,
                                BauraTheme::AccentBlue, 18);
+    const int brand_size = std::min(
+        112, std::max(12, std::min(static_cast<int>(fb.width),
+                                  static_cast<int>(fb.height)) / 5));
+    BauraBrand::draw_mark(renderer,
+                          (static_cast<int>(fb.width) - brand_size) / 2,
+                          static_cast<int>(fb.height) / 3 - brand_size / 2,
+                          brand_size, 34);
     for (BauraWindow *window : windows) {
         if (window != nullptr) window->draw(renderer);
     }

@@ -38,6 +38,12 @@ silently remove `.gitmodules` while leaving a submodule gitlink behind.
 - Existing `KERNEL/L4/MEMORY`, `SCHEDULER`, `api`, `arch`, and syscall fragments
   are not assumed to be integrated or authoritative until proven by build and
   execution.
+- In particular, the unbuilt `KERNEL/L4/syscall_table.c` casts BAURA VFS and
+  security functions to an incompatible generic syscall signature. It bypasses
+  the BAURA IPC wire contract and must not be linked into seL4 or treated as a
+  supported BAURA API/ABI. Replace it only as part of a separately specified
+  BAURA-owned kernel syscall mechanism; BAURA service calls remain user-level
+  IPC.
 
 ## Staged plan
 
@@ -130,20 +136,48 @@ only through a separately reviewed repository change.
 - Its headers define `seL4_BootInfo`, including initial-thread IPC-buffer,
   image-frame and untyped-capability regions. This is evidence of the source
   API, not evidence that the current BAURA target receives or validates it.
-- The Makefile configures `PLATFORM=pc99`, `KernelSel4Arch=x86_64`, and kernel
-  printing, and builds `kernel.elf`; the target does not build a userspace
-  application or integrated boot image.
+- The Makefile configures `KernelPlatform=pc99`, `KernelSel4Arch=x86_64`,
+  `KernelVerificationBuild=OFF`, and `KernelPrinting=ON`. The default target
+  now requests the separate x86_64 Core archive, seL4 kernel, and BAURA
+  initial-task ELF. `BOOT/SEL4` contains a seL4-specific adapter, startup
+  assembly, user-image linker script, and GRUB Multiboot2 configuration. The
+  seL4 bring-up config disables `KernelVerificationBuild` because this source
+  gates `KernelPrinting` on verification being off; it is not a verified-
+  kernel configuration.
+- In the WSL Linux filesystem, `make sel4-kernel-x86_64` completed and produced
+  `build/sel4-x86_64/kernel.elf`. `file` and `readelf` confirmed an ELF64
+  x86-64 executable with entry point `0x10041e` and three `PT_LOAD` segments.
+  GNU ld reported two load segments with RWX permissions; this warning remains
+  to be investigated before treating the artifact as suitable beyond debug
+  bring-up. This verifies compilation only, not boot.
+- The selected upstream x86 boot implementation declares Multiboot 1 and
+  Multiboot 2 headers enabled by default and `boot_sys.c` rejects boot if no
+  module containing a userspace ELF image is supplied. The new ISO target
+  configures seL4 as a Multiboot2 kernel and supplies `baura_init.elf` as the
+  first module, matching that source-level contract. These new build and GRUB
+  targets have not yet been run in the Linux build environment, and QEMU has
+  not verified the handoff.
+- BAURA Core's PCI registry accepts an injected config-space reader and has no
+  physical-device backend. Its C driver probes are in-process callbacks; the
+  Rust isolation interface has no concrete seL4 binding. The custom x86_64
+  fragments under `KERNEL/L4` are not connected to the configured seL4 build.
+  Device/resource authority must therefore be added in the seL4 platform
+  adapter and passed through a checked Core interface; the portable Core must
+  not access PCI ports or map resource addresses itself.
 - `BOOT/BOOTLOADER/KERNEL_LOADER/L4_LOADER.c` and
   `BOOT/BOOTLOADER/KERNEL_HANDOFF.h` now define a versioned generic handoff
   and callback-based validation/transfer contract. This is not a kernel image
   loader or a seL4 boot protocol implementation.
 - BAURA Core currently has injectable process and authority callbacks. The
-  initial-task entry now requires a supported platform ABI version, a
-  sufficiently large platform structure, an opaque boot-info object, and a
-  validation callback before system initialization. No seL4 adapter implements
-  these callbacks yet.
-- BOOT UART I/O is callback-backed and can be adapted to the Core console
-  contract; no privileged port-I/O backend is installed.
+  initial-task entry requires a supported platform ABI version, a sufficiently
+  large platform structure, an opaque boot-info object, and a validation
+  callback before system initialization. `BOOT/SEL4/initial_task.c` implements
+  a first adapter using the generated seL4 BootInfo structure and debug
+  console syscall. It installs neither process-creation nor authorization
+  backends; capabilities are validated structurally but are not yet consumed.
+- The legacy 32-bit Multiboot path now installs a ring-0 COM1 UART port-I/O
+  backend for boot diagnostics. This is not a seL4 userspace adapter and grants
+  no UART port capability to a BAURA task.
 - BOOT validates callback-normalized firmware memory-map snapshots, but no
   native UEFI protocol adapter or boot-services handoff exists yet.
 - COMMUNICATION now has a synchronous bounded C callback bus and a transport-
@@ -151,16 +185,25 @@ only through a separately reviewed repository change.
 - GUI display/surface/composition logic is host-testable against an injected
   framebuffer. No framebuffer mapping, GPU, input backend, or desktop startup
   is integrated.
-- No test, build, or boot verification is claimed by this roadmap update.
+- Host tests for boot, communication, GUI, ABI, Core and Rust were run
+  successfully in WSL. The Core x86_64 archive also compiled with native WSL
+  GCC in freestanding mode. The seL4 kernel ELF compiled successfully as
+  recorded above. The initial-task adapter, combined ISO, and QEMU boot have
+  not yet been built or verified; Stage 2 remains incomplete.
 
 ## Immediate next work
 
-1. Verify and test the portable Core callback contract on a host.
-2. Choose and document the seL4 source management model before changing
+1. In WSL, build `make baura-x86_64 X86_64_CROSS_COMPILE=` and inspect the
+   initial-task ELF headers and segments; fix any compiler/linker integration
+   failures before proceeding.
+2. Build `make sel4-iso-x86_64 X86_64_CROSS_COMPILE=` and confirm the GRUB
+   Multiboot2 image/module handoff, then run `make run-sel4-x86_64
+   X86_64_CROSS_COMPILE=` and verify BootInfo validation plus the Core-ready
+   message in QEMU.
+3. Add negative tests for malformed boot-info inputs and a real negative
+   boot/handoff test where feasible; validate capability use before adding
+   task creation or IPC services.
+4. Choose and document the seL4 source-management model before changing
    `.gitmodules` or moving the source directory.
-3. Select and validate the exact userspace build system, image format, loader,
-   and initial-task capability handoff for the `pc99` x86_64 configuration.
-4. Implement the seL4-specific initial-task adapter and executable outside the
-   portable Core.
 5. Keep the separate BAURA L4 kernel specification and implementation as a
    later workstream; do not mix speculative kernel code into the seL4 tree.

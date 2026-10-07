@@ -1,4 +1,5 @@
 
+/* Legacy ring-0 port-I/O prototype; not a seL4 or userspace PCI backend. */
 #include "BAURA_DEVICE_MGR.h"
 #include <stdint.h>
 

@@ -57,7 +57,10 @@ services isolés.
   informations de boot doivent être confirmés pour la configuration x86_64
   choisie. Ne pas supposer que l’image Multiboot actuelle convient.
 - L’affichage d’une identité BAURA doit commencer par GRUB et la console série.
-  Une splash screen graphique viendra après le support de l’affichage.
+  Le rendu logiciel réutilisable de la marque et d’une splash screen est présent
+  dans `GUI/UI_FRAMEWORK/baura_brand.h` et intégré aux principales surfaces GUI.
+  Il n’est pas encore affiché au vrai boot : la cible intégrée doit fournir un
+  framebuffer et appeler ce rendu depuis un stade de démarrage graphique.
 - L’objectif initial n’est pas de prendre en charge tous les ordinateurs
   existants. Il est de construire une base reproductible, puis d’élargir la
   compatibilité sur une matrice matérielle documentée.
@@ -89,16 +92,21 @@ plus récents avant d’entreprendre les phases décrites ci-dessous.
 
 ### Éléments qui ne sont pas encore démontrés comme fonctionnels
 
-- Le `Makefile` principal construit un chemin de test **x86 32 bits Multiboot** ;
-  il ne construit pas seL4.
+- Le chemin historique **x86 32 bits Multiboot** reste disponible pour les
+  essais legacy. `make` construit désormais le Core x86_64, le noyau seL4 et
+  l’ELF de la tâche initiale BAURA comme binaires distincts. `make
+  sel4-iso-x86_64` assemble un ISO GRUB Multiboot2 qui fournit l’ELF Core
+  comme module initial ; cet assemblage et son démarrage restent à vérifier
+  sous Linux/QEMU.
 - `BOOT/boot.asm`, `KERNEL/BAURA_CORE/kernel_main.c`, `linker.ld` et `grub.cfg`
   ne constituent pas encore le chemin de boot intégré seL4 + BAURA Core x86_64.
 - `BOOT/BOOTLOADER/KERNEL_LOADER/L4_LOADER.c` contient un placeholder et ne
   démarre pas seL4.
 - `BOOT/FIRMWARE/UEFI/uefi_mem.c` contient un placeholder ; il n’établit pas un
   chemin UEFI fonctionnel.
-- Le contrat `BootInfo` local est incomplet et n’est pas démontré comme
-  compatible avec les informations réellement fournies par seL4 ou le chargeur.
+- L’adaptateur de `BOOT/SEL4` lit et valide les champs fixes de `seL4_BootInfo`
+  via les headers générés de la configuration choisie. Le build et le transfert
+  réel de BootInfo jusqu’à cette tâche ne sont pas encore vérifiés.
 - Les fragments x86_64 de mémoire, scheduler, appels système et interruptions
   ne sont pas intégrés au build principal ; certains sont incomplets ou
   utilisent des types/fonctions non résolus dans l’arbre.

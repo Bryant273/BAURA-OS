@@ -5,7 +5,7 @@ int uart_init(BauraUart *uart, const BauraUartIo *io) {
         uint16_t offset;
         uint8_t value;
     } setup[] = {
-        {1, 0x00}, {3, 0x80}, {0, 0x03}, {1, 0x00},
+        {1, 0x00}, {3, 0x80}, {0, BAURA_UART_DIVISOR_115200}, {1, 0x00},
         {3, 0x03}, {2, 0xC7}, {4, 0x0B}
     };
     size_t index;

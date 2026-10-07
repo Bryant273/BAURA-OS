@@ -1,5 +1,6 @@
 #include "login_screen.h"
 
+#include "../UI_FRAMEWORK/baura_brand.h"
 #include "../UI_FRAMEWORK/baura_theme.h"
 
 #include <algorithm>
@@ -106,10 +107,7 @@ void BauraLoginScreen::render(BGERenderer &renderer) {
     const int y = (static_cast<int>(fb.height) - panel_height) / 2;
     renderer.draw_rounded_rect(x, y, panel_width, panel_height, 22,
                                BauraTheme::GlassDark, 238);
-    renderer.draw_rounded_rect(x + panel_width / 2 - 30, y + 32, 60, 60, 30,
-                               BauraTheme::AccentBlue);
-    renderer.draw_icon(x + panel_width / 2 - 16, y + 46, 32,
-                       BauraTheme::TextPrimary, "user");
+    BauraBrand::draw_mark(renderer, x + panel_width / 2 - 26, y + 38, 52);
     draw_login_text(renderer, x + 36, y + 116, user_name, 32,
                     BauraTheme::TextPrimary, 2);
     renderer.draw_rounded_rect(x + 30, y + 160, panel_width - 60, 42, 12,

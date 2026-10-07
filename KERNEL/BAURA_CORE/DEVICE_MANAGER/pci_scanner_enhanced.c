@@ -1,4 +1,5 @@
 
+/* Placeholder only: ACPI/PCI discovery below is simulated and unintegrated. */
 #include "BAURA_DEVICE_MGR.h"
 #include <stdint.h>
 

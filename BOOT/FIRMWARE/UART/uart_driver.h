@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define BAURA_UART_COM1 0x3F8u
+#define BAURA_UART_DIVISOR_115200 1u
 #define BAURA_UART_POLL_LIMIT 100000u
 
 typedef int (*BauraPortWrite8)(void *context, uint16_t port, uint8_t value);

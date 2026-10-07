@@ -1,5 +1,6 @@
 #include "installer_gui.h"
 
+#include "../../GUI/UI_FRAMEWORK/baura_brand.h"
 #include "../../GUI/UI_FRAMEWORK/baura_theme.h"
 
 #include <climits>
@@ -96,8 +97,9 @@ void BauraInstaller::render(BGERenderer &renderer) {
                                 0xFF182137u);
     renderer.draw_rounded_rect(x, y, panel_width, panel_height, 22,
                                BauraTheme::GlassDark, 245);
-    renderer.draw_text(x + 34, y + 42, "BAURA OS", BauraTheme::TextPrimary, 2);
-    renderer.draw_text(x + 34, y + 76, "A simpler, calmer desktop",
+    BauraBrand::draw_mark(renderer, x + 34, y + 24, 52);
+    renderer.draw_text(x + 98, y + 42, "BAURA OS", BauraTheme::TextPrimary, 2);
+    renderer.draw_text(x + 98, y + 76, "A simpler, calmer desktop",
                        BauraTheme::TextSecondary);
     static const char *labels[] = {
         "Welcome", "Hardware", "Partition", "Format", "Install", "Finish"

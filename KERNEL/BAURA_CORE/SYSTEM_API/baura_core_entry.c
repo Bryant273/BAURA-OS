@@ -5,7 +5,6 @@ static const char ready_message[] = "BAURA OS Core ready\r\n";
 
 BauraStatus baura_core_initial_task_start(const BauraCorePlatform *platform) {
     BauraStatus status;
-    BauraProcessBackend empty_backend = {0, 0, 0, 0};
     const int has_graphical_extension =
         platform != 0 &&
         platform->struct_size >=
@@ -45,7 +44,7 @@ BauraStatus baura_core_initial_task_start(const BauraCorePlatform *platform) {
     if (status != BAURA_OK) return status;
 
     status = baura_process_set_backend(
-        platform->process_backend.start == 0 ? &empty_backend : &platform->process_backend);
+        platform->process_backend.start == 0 ? 0 : &platform->process_backend);
     if (status != BAURA_OK) return status;
     status = baura_security_set_authority_check(platform->authority_check,
                                                 platform->authority_context);

@@ -2,7 +2,7 @@
 #ifndef BAURA_COMPOSITOR_H
 #define BAURA_COMPOSITOR_H
 
-#include "BAURA_DISPLAY_SERVER.h"
+#include "../DISPLAY_SERVER/BAURA_DISPLAY_SERVER.h"
 #include <vector>
 
 struct Window {

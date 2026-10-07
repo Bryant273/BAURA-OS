@@ -1,5 +1,6 @@
 #include "baura_hybrid_taskbar.h"
 
+#include "baura_brand.h"
 #include "baura_theme.h"
 #include "papirus_icon_catalog.h"
 
@@ -201,7 +202,8 @@ bool BauraTaskbar::handle_click(int x, int y, uint32_t screen_width,
             return true;
         }
     }
-    if (y >= static_cast<int>(screen_height) - 58 && y < screen_height) {
+    if (y >= static_cast<int>(screen_height) - 58 &&
+        y < static_cast<int>(screen_height)) {
         if (x >= 22 && x < 58) {
             toggle_start_menu();
             return true;
@@ -278,7 +280,7 @@ void BauraTaskbar::draw_taskbar(BGERenderer &renderer) {
     renderer.draw_rounded_rect(22, y + 12, 36, 34, 11,
                                start_open ? BauraTheme::AccentBlue
                                           : BauraTheme::SurfaceRaised);
-    renderer.draw_text(31, y + 24, "B", BauraTheme::TextPrimary, 1);
+    BauraBrand::draw_mark(renderer, 27, y + 16, 26);
     renderer.draw_rounded_rect(64, y + 12, 110, 34, 12,
                                BauraTheme::SurfaceRaised, 210);
     draw_icon(renderer, "search", 69, y + 16, 24);
@@ -384,7 +386,8 @@ void BauraTaskbar::draw_top_widgets(BGERenderer &renderer) {
 void BauraTaskbar::draw_start_panel(BGERenderer &renderer) {
     const int y = static_cast<int>(renderer.framebuffer().height) - 350;
     renderer.draw_rounded_rect(18, y, 330, 330, 18, BauraTheme::GlassDark, 245);
-    renderer.draw_text(40, y + 24, "BAURA", BauraTheme::TextPrimary, 2);
+    BauraBrand::draw_mark(renderer, 40, y + 16, 32);
+    renderer.draw_text(82, y + 24, "BAURA", BauraTheme::TextPrimary, 2);
     renderer.draw_rounded_rect(38, y + 62, 286, 38, 12,
                                BauraTheme::SurfaceRaised);
     draw_icon(renderer, "search", 44, y + 68, 24);
@@ -423,7 +426,8 @@ void BauraTaskbar::draw_notifications_panel(BGERenderer &renderer) {
     if (width < 100 || fb.height < 310) return;
     const int x = static_cast<int>(fb.width) - width - 12;
     renderer.draw_rounded_rect(x, 58, width, 230, 18, BauraTheme::GlassDark, 245);
-    renderer.draw_text(x + 20, 80, "Notifications", BauraTheme::TextPrimary, 2);
+    BauraBrand::draw_mark(renderer, x + 20, 68, 28);
+    renderer.draw_text(x + 58, 80, "Notifications", BauraTheme::TextPrimary, 2);
     if (notification_count == 0) {
         renderer.draw_text(x + 20, 130, "You are all caught up",
                            BauraTheme::TextSecondary);

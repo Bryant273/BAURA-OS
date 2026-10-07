@@ -13,7 +13,9 @@ static void first_subscriber(const BusMessage *message, void *context) {
     assert(message->size == 4);
     assert(memcmp(message->data, "test", 4) == 0);
     ++*calls;
-    assert(bus_unsubscribe(second_subscription) == BAURA_BUS_OK);
+    if (*calls == 1) {
+        assert(bus_unsubscribe(second_subscription) == BAURA_BUS_OK);
+    }
 }
 
 static void second_subscriber(const BusMessage *message, void *context) {
