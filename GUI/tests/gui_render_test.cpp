@@ -1,6 +1,9 @@
 #include <cassert>
+#include <climits>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
+#include <fstream>
 #include <limits>
 
 #include "../BAURA_GUI_FFI.h"
@@ -225,6 +228,83 @@ static void taskbar_action(uint32_t action, void *context) {
     assert(action >= BauraTaskbar::ActionStartMenu &&
            action <= BauraTaskbar::ActionActivateApp);
     ++calls[action];
+}
+
+static bool write_bmp(const char *path, const BGEFramebuffer &framebuffer) {
+    if (path == nullptr || path[0] == '\0' || framebuffer.pixels == nullptr ||
+        framebuffer.width == 0 || framebuffer.height == 0 ||
+        framebuffer.width > static_cast<uint32_t>(INT_MAX) ||
+        framebuffer.height > static_cast<uint32_t>(INT_MAX) ||
+        framebuffer.stride_pixels < framebuffer.width) return false;
+
+    const uint64_t row_bytes =
+        (static_cast<uint64_t>(framebuffer.width) * 3u + 3u) & ~3ull;
+    if (row_bytes > std::numeric_limits<uint64_t>::max() /
+                        framebuffer.height) return false;
+    const uint64_t image_bytes = row_bytes * framebuffer.height;
+    if (image_bytes > std::numeric_limits<uint32_t>::max() - 54u) {
+        return false;
+    }
+    const uint64_t file_bytes = 54u + image_bytes;
+
+    std::ofstream output(path, std::ios::binary);
+    if (!output) return false;
+    const auto write_u16 = [&output](uint16_t value) {
+        const char bytes[] = {
+            static_cast<char>(value),
+            static_cast<char>(value >> 8)
+        };
+        output.write(bytes, sizeof(bytes));
+    };
+    const auto write_u32 = [&output](uint32_t value) {
+        const char bytes[] = {
+            static_cast<char>(value),
+            static_cast<char>(value >> 8),
+            static_cast<char>(value >> 16),
+            static_cast<char>(value >> 24)
+        };
+        output.write(bytes, sizeof(bytes));
+    };
+
+    output.put('B');
+    output.put('M');
+    write_u32(static_cast<uint32_t>(file_bytes));
+    write_u16(0);
+    write_u16(0);
+    write_u32(54);
+    write_u32(40);
+    write_u32(framebuffer.width);
+    write_u32(framebuffer.height);
+    write_u16(1);
+    write_u16(24);
+    write_u32(0);
+    write_u32(static_cast<uint32_t>(image_bytes));
+    write_u32(2835);
+    write_u32(2835);
+    write_u32(0);
+    write_u32(0);
+
+    const char padding[3] = {};
+    const size_t padding_bytes =
+        static_cast<size_t>(row_bytes) -
+        static_cast<size_t>(framebuffer.width) * 3u;
+    for (uint32_t row = framebuffer.height; row > 0; --row) {
+        const uint32_t *pixels =
+            framebuffer.pixels +
+            static_cast<size_t>(row - 1u) * framebuffer.stride_pixels;
+        for (uint32_t column = 0; column < framebuffer.width; ++column) {
+            const uint32_t pixel = pixels[column];
+            const char bgr[] = {
+                static_cast<char>(pixel),
+                static_cast<char>(pixel >> 8),
+                static_cast<char>(pixel >> 16)
+            };
+            output.write(bgr, sizeof(bgr));
+        }
+        output.write(padding, static_cast<std::streamsize>(padding_bytes));
+    }
+    output.close();
+    return !output.fail();
 }
 
 int main() {
@@ -590,5 +670,16 @@ int main() {
     assert(failing_installer.last_error() == -7);
     assert(failures == 2);
     failing_installer.render(renderer);
+
+    const char *preview_path = std::getenv("BAURA_GUI_PREVIEW_PATH");
+    if (preview_path != nullptr) {
+        BGEUIFramework preview_ui(renderer);
+        if (preview_ui.create_window("BAURA OS preview",
+                                     {120, 110, 480, 300}) == 0) {
+            return 1;
+        }
+        preview_ui.render_desktop(0.0f);
+        if (!write_bmp(preview_path, desktop_fb)) return 1;
+    }
     return 0;
 }

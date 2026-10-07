@@ -40,6 +40,11 @@ callbacks, installer callbacks, and rasterizer input validation. It also
 checks the callback-driven PS/2 decoder, RGBX/BGRX output conversion, and
 registration/start/stop of the GUI runtime through the Core service manager.
 Run this target after C++ compiler and Make are available in the environment.
+`make gui-preview` reruns the checks and writes
+`build/baura-gui-preview.bmp`. Open that BMP on the host to inspect a static
+software-rendered desktop snapshot. It is not a screenshot of the seL4 boot
+image and does not demonstrate live GUI integration. From WSL, open it in
+Windows with `explorer.exe "$(wslpath -w build/baura-gui-preview.bmp)"`.
 
 ## Platform integration still required
 

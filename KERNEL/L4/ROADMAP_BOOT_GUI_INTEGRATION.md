@@ -39,29 +39,36 @@ signifie pas que le Core remplace seL4 ou peut s’accorder des droits matériel
 
 ## État de départ vérifié dans le dépôt
 
-- Le chemin `BOOT/boot.asm`/GRUB est encore un bring-up Multiboot 32 bits ; il
-  ne lance pas seL4. `make` sélectionne maintenant par défaut les artefacts
-  séparés Core x86_64 et noyau seL4 x86_64 ; il ne produit pas encore une
-  image intégrée ni une tâche initiale BAURA. Le chemin 32 bits est conservé
-  sous `legacy32`, `legacy32-iso` et `run-legacy32` (avec les anciens alias
-  `iso`/`run` pour compatibilité).
+- Le chemin `BOOT/boot.asm`/GRUB reste un bring-up Multiboot 32 bits distinct.
+  Le Makefile contient désormais des cibles séparées pour le Core x86_64, le
+  noyau seL4, une tâche initiale, l'ISO Multiboot2 et QEMU, mais la génération
+  de la tâche et son démarrage intégré ne sont pas validés. Le chemin 32 bits
+  est conservé sous `legacy32`, `legacy32-iso` et `run-legacy32` (avec les
+  anciens alias `iso`/`run` pour compatibilité).
 - Le Makefile configure seL4 avec `KernelPlatform=pc99`,
   `KernelSel4Arch=x86_64`, `KernelVerificationBuild=OFF` et
-  `KernelPrinting=ON`, puis construit le noyau séparément. L'impression série
-  est désactivée par défaut avec une configuration seL4 vérifiée ; le mode
-  actuel est un build de développement et ne revendique pas de vérification
-  formelle. Il ne construit pas encore l’image de tâche initiale BAURA ni une
-  image de démarrage combinée.
+  `KernelPrinting=ON`. Le Makefile prévoit également de générer/stager
+  libsel4, de construire l’ELF de tâche initiale et de créer une ISO ; ces
+  étapes échouent ou restent non vérifiées tant que le sous-module est une
+  copie NTFS incorrecte et que le build Linux/QEMU n’a pas été refait.
+  L'impression série est désactivée par défaut avec une configuration seL4
+  vérifiée ; le mode actuel est un build de développement et ne revendique pas
+  de vérification formelle.
 - Le contrat Core garde le BootInfo opaque et vérifie l’entrée via un
-  validateur fourni par la plateforme. Aucun validateur/adaptateur seL4
-  concret n’est actuellement lié.
+  validateur fourni par la plateforme. `BOOT/SEL4/initial_task.c` apporte un
+  premier adaptateur qui vérifie les champs fixes et régions de slots, mais
+  n'analyse pas encore les chunks variables (dont les métadonnées framebuffer)
+  et n'a pas été compilé ni démarré avec le bon sous-module.
 - Un hook GUI optionnel, compatible avec l’ancienne taille de structure, a été
   ajouté au contrat de plateforme Core. Le pont GUI peut enregistrer le
   runtime dans le gestionnaire de services. Ce hook ne fournit pas les
   capacités ni les mappings seL4.
 - Le runtime GUI accepte un framebuffer 32 bits RGBX/BGRX déjà mappé et le
-  pilote PS/2 utilise des callbacks d’E/S fournis par l’appelant. Aucun code
-  ne procure actuellement ce mapping, les capacités de ports ou des IRQ.
+  pilote PS/2 utilise des callbacks d’E/S fournis par l’appelant. seL4 x86
+  peut transmettre les informations Multiboot2 du framebuffer dans un chunk
+  BootInfo `SEL4_BOOTINFO_HEADER_X86_FRAMEBUFFER`; ce sont des métadonnées, pas
+  un mapping utilisateur ni une capacité. Aucun code BAURA ne procure
+  actuellement ce mapping, les capacités de ports ou des IRQ.
 - Le noyau Multiboot 32 bits initialise maintenant le pilote série 16550
   COM1 via des callbacks x86 de ring 0 pour ses messages de démarrage. Cette
   intégration destinée à QEMU n’est pas l’adaptateur seL4 et ne délègue aucune
@@ -73,6 +80,9 @@ signifie pas que le Core remplace seL4 ou peut s’accorder des droits matériel
   illustrations Papirus. Le renderer dessine encore des primitives.
 - Les tests hôtes ajoutés au Makefile ne sont pas déclarés réussis tant qu’ils
   n’ont pas été exécutés dans un environnement de build.
+- `make gui-preview` produit un BMP hors ligne du rendu BGE pour inspection.
+  Ce rendu logiciel ne provient pas du boot seL4 et ne prouve pas une sortie
+  vidéo opérationnelle.
 
 Ces constats sont ceux des fichiers du dépôt à la date de rédaction. Ils ne
 prouvent ni un démarrage sur matériel, ni la disponibilité d’un framebuffer
@@ -226,15 +236,24 @@ au dépôt attend la vérification de leur provenance et licence.
 
 ### Prochaine tranche concrète
 
-1. Lancer les vérifications hôtes disponibles et relever ce qui échoue.
-2. Relever la configuration exacte seL4 générée pour `pc99` x86_64 et le
-   chemin d’amorçage officiellement pris en charge pour cette version.
-3. Choisir l’environnement de première démonstration (QEMU ou machine) et
-   obtenir le contrat explicite de chargement de l’initial task.
-4. À partir de ces faits, écrire l’adaptateur minimal console + validation
-   BootInfo ; ne pas ajouter de mapping graphique avant que son contrat soit
-   établi.
-5. En parallèle, comparer les dépôts/licences des trois bibliothèques et
+1. Dans le clone Linux/WSL, exécuter `make sel4-source-check`. Si les liens
+   échouent, réinitialiser le sous-module depuis Git dans le système de
+   fichiers Linux au lieu de recopier l’arbre depuis NTFS.
+2. Lancer les tests hôtes et `make baura-x86_64 X86_64_CROSS_COMPILE=` ;
+   inspecter l’ELF utilisateur, ses segments et les en-têtes Multiboot avant
+   de créer l’ISO.
+3. Démarrer sous QEMU avec capture série et vérifier que la vraie tâche
+   initiale reçoit BootInfo et affiche l’état Core. Aucun démarrage réussi
+   n’est encore établi.
+4. Implémenter puis tester séparément le parseur des chunks BootInfo, le
+   backend de mapping des frames framebuffer et le contrat GUI Core. Les
+   métadonnées framebuffer transmises par seL4 ne sont pas une capacité ni un
+   mapping utilisable ; ne pas démarrer le bureau avant que ces droits et le
+   cycle d’événements soient réellement fournis.
+5. Pour voir le rendu logiciel actuel sans attendre le boot, lancer
+   `make gui-preview` et ouvrir `build/baura-gui-preview.bmp`. Cet aperçu
+   statique est distinct de la sortie vidéo QEMU.
+6. En parallèle, comparer les dépôts/licences des bibliothèques d’icônes et
    préparer un prototype d’assets hors intégration système.
 
 ## Critères de communication de l’avancement

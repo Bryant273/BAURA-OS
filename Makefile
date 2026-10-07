@@ -68,6 +68,7 @@ X86_64_CFLAGS ?= -std=gnu11 -m64 -ffreestanding -fno-pic -fno-pie -fno-stack-pro
 .PHONY: all legacy32 legacy32-iso run-legacy32 iso run \
 	test-core test-core-x86_64 test-abi test-rust \
 	test-boot test-communication test-gui test-integration \
+	gui-preview sel4-source-check \
 	validate-all \
 	baura-core-x86_64 sel4-configure-x86_64 sel4-kernel-x86_64 \
 	sel4-initial-task-x86_64 sel4-iso-x86_64 run-sel4-x86_64 \
@@ -98,7 +99,10 @@ baura-core-x86_64: $(BUILD_DIR)/x86_64/libbaura_core.a
 $(BUILD_DIR)/x86_64/libbaura_core.a: $(X86_64_CORE_OBJECTS)
 	$(X86_64_AR) rcs $@ $^
 
-sel4-configure-x86_64:
+sel4-source-check:
+	$(PYTHON) tools/check_sel4_source.py $(SEL4_SOURCE_DIR)
+
+sel4-configure-x86_64: sel4-source-check
 	$(HOST_CMAKE) -S $(SEL4_SOURCE_DIR) -B $(SEL4_X86_64_BUILD_DIR) \
 		-DKernelPlatform=pc99 -DKernelSel4Arch=x86_64 \
 		-DKernelVerificationBuild=OFF -DKernelPrinting=ON \
@@ -235,6 +239,10 @@ test-gui:
 		BOOT/INSTALLER/installer_gui.cpp \
 		$(BUILD_DIR)/baura_service_manager_gui_test.o
 	$(BUILD_DIR)/gui_render_test
+
+gui-preview: test-gui
+	BAURA_GUI_PREVIEW_PATH=$(BUILD_DIR)/baura-gui-preview.bmp \
+		$(BUILD_DIR)/gui_render_test
 
 test-integration: test-boot test-communication test-gui test-core
 

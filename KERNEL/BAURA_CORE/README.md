@@ -42,6 +42,16 @@ been converted from a submodule.
 
 `make` and `make baura-x86_64` build the x86_64 Core archive, seL4 kernel, and a separate BAURA initial-task ELF. The Core is linked into the user-task ELF; it is not linked into the seL4 kernel ELF. The seL4 build explicitly selects `KernelPlatform=pc99`, `KernelSel4Arch=x86_64`, and disables `KernelVerificationBuild` to permit kernel serial printing; this is a debug bring-up configuration, not a claim of a verified kernel. In WSL, the native x86_64 toolchain can be selected with `X86_64_CROSS_COMPILE=`; otherwise the default is `x86_64-elf-gcc`/`x86_64-elf-ar`. `make sel4-kernel-x86_64` builds seL4's `kernel.elf` and stages its configuration-generated libsel4 headers. `make sel4-initial-task-x86_64` builds `build/x86_64/baura_init.elf`. `make sel4-iso-x86_64` checks the kernel's Multiboot2 header and creates a GRUB ISO with seL4 as the kernel and the BAURA ELF as its initial-task module; `make run-sel4-x86_64` launches that ISO in QEMU. This is an emulator bring-up path, not proof of a UEFI boot. A cross CMake toolchain can be supplied with `SEL4_CMAKE_ARGS`, for example `SEL4_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=/path/to/x86_64.cmake"`. `make test-core` builds/runs host-side C integration and ABI codec tests; `make test-core-x86_64` uses a 64-bit host ABI. `make test-rust` runs the Rust VFS, security, and driver-isolation contract unit tests. The old image is explicitly available as `make legacy32`, `make legacy32-iso`, and `make run-legacy32`; `make iso` and `make run` remain compatibility aliases for the legacy path only.
 
+Before configuring seL4, `make sel4-source-check` verifies that the six
+`libsel4/tools` Git symlinks needed by its generators are actual symlinks.
+This catches a common broken Windows-to-WSL copy where a symlink target such
+as `../../tools/condition.py` becomes the file contents and Python reports a
+`SyntaxError`. Clone/initialize the submodule inside the WSL Linux filesystem;
+do not copy `KERNEL/L4/sel4` from NTFS.
+`make gui-preview` runs the host renderer tests and writes a static BMP to
+`build/baura-gui-preview.bmp`. This lets developers inspect the software UI
+without implying that the seL4 task has a framebuffer or starts the GUI.
+
 The seL4 target creates the generated header, metadata, and prune-header output
 directories for the selected pc99/x86_64 configuration before invoking the
 build, as some upstream generators open destination files directly and do not
