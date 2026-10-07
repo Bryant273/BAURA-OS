@@ -1,64 +1,96 @@
-
 package main
 
+/*
+#include <stdint.h>
+#include <stdlib.h>
+
+typedef void (*BauraGoBusCallback)(uint32_t topic, const char *data, int size);
+static inline void baura_call_bus_callback(void *callback, uint32_t topic,
+                                           const char *data, int size) {
+    ((BauraGoBusCallback)callback)(topic, data, size);
+}
+*/
 import "C"
+
 import (
-	"fmt"
 	"sync"
 	"unsafe"
 )
 
-type Message struct {
-	Topic uint32
-	Data  []byte
+type subscriber struct {
+	topic    uint32
+	callback unsafe.Pointer
 }
 
-type Subscriber func(msg Message)
-
 var (
-	subscribers = make(map[uint32][]Subscriber)
+	subscribers []subscriber
 	mu          sync.RWMutex
 )
 
 //export baura_bus_publish
-func baura_bus_publish(topic uint32, data *C.char, size C.int) {
+func baura_bus_publish(topic C.uint32_t, data *C.char, size C.int) C.int {
+	if topic == 0 || size < 0 || (size > 0 && data == nil) {
+		return -1
+	}
+	var payload []byte
+	if size > 0 {
+		payload = C.GoBytes(unsafe.Pointer(data), size)
+	}
 	mu.RLock()
-	subs, exists := subscribers[topic]
+	targets := make([]unsafe.Pointer, 0, len(subscribers))
+	for _, sub := range subscribers {
+		if sub.topic == uint32(topic) {
+			targets = append(targets, sub.callback)
+		}
+	}
 	mu.RUnlock()
-
-	if !exists {
-		return
+	if len(targets) == 0 {
+		return 0
 	}
 
-	// Convert C data to Go slice
-	byteData := C.GoBytes(unsafe.Pointer(data), size)
-	msg := Message{Topic: topic, Data: byteData}
-
-	// Dispatch to all subscribers asynchronously via goroutines
-	for _, sub := range subs {
-		go sub(msg)
+	var payloadPointer *C.char
+	if len(payload) != 0 {
+		payloadPointer = (*C.char)(C.CBytes(payload))
+		defer C.free(unsafe.Pointer(payloadPointer))
 	}
+	for _, callback := range targets {
+		C.baura_call_bus_callback(unsafe.Pointer(callback), topic,
+			payloadPointer, size)
+	}
+	return 0
 }
 
 //export baura_bus_subscribe
-func baura_bus_subscribe(topic uint32, callback unsafe.Pointer) {
+func baura_bus_subscribe(topic C.uint32_t, callback unsafe.Pointer) C.int {
+	if topic == 0 || callback == nil {
+		return -1
+	}
 	mu.Lock()
 	defer mu.Unlock()
-
-	// In a real OS, we would convert the unsafe.Pointer to a Go function
-	// For this implementation, we'll simulate the callback registration
-	fmt.Printf("Subscriber registered for topic %d
-", topic)
-
-	// Mock callback for demonstration in the core
-	dummySub := func(msg Message) {
-		fmt.Printf("Topic %d received data: %s\n", msg.Topic, string(msg.Data))
+	if len(subscribers) >= 64 {
+		return -2
 	}
-
-	subscribers[topic] = append(subscribers[topic], dummySub)
+	subscribers = append(subscribers, subscriber{
+		topic:    uint32(topic),
+		callback: callback,
+	})
+	return 0
 }
 
-func main() {
-    // This keeps the bus alive as a service
-    select {}
+//export baura_bus_unsubscribe
+func baura_bus_unsubscribe(topic C.uint32_t, callback unsafe.Pointer) C.int {
+	if topic == 0 || callback == nil {
+		return -1
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for index, sub := range subscribers {
+		if sub.topic == uint32(topic) && sub.callback == callback {
+			subscribers = append(subscribers[:index], subscribers[index+1:]...)
+			return 0
+		}
+	}
+	return -3
 }
+
+func main() {}

@@ -1,29 +1,29 @@
 #include "BAURA_RPC_CORE.h"
 
-int baura_rpc_call(Capability server_cap, uint32_t method_id, void* args, void* response) {
-    L4_IPC_Message msg;
-    msg.label = method_id;
+int baura_rpc_call(const BauraRPC_Transport *transport, uint64_t endpoint,
+                   uint32_t interface_id, uint32_t method_id,
+                   const uint64_t args[BAURA_RPC_ARGUMENT_COUNT],
+                   uint64_t timeout_ms, BauraRPC_Response *response) {
+    BauraRPC_Request request;
+    BauraRPC_Response result = {0};
+    uint32_t index;
 
-    // Copie des arguments dans le payload IPC
-    for(int i=0; i<4; i++) {
-        msg.payload[i] = ((uint64_t*)args)[i];
+    if (transport == 0 || endpoint == 0 || interface_id == 0 ||
+        method_id == 0 || args == 0 || response == 0) {
+        return BAURA_RPC_ERR_ARGUMENT;
+    }
+    if (transport->exchange == 0) return BAURA_RPC_ERR_UNAVAILABLE;
+
+    request.interface_id = interface_id;
+    request.method_id = method_id;
+    for (index = 0; index < BAURA_RPC_ARGUMENT_COUNT; ++index) {
+        request.args[index] = args[index];
     }
 
-    // Envoi via L4 IPC
-    if (l4_ipc_send(server_cap, &msg) != SUCCESS) {
-        return ERR_IPC_FAILED;
+    if (transport->exchange(transport->context, endpoint, &request, &result,
+                           timeout_ms) != 0) {
+        return BAURA_RPC_ERR_TRANSPORT;
     }
-
-    // Réception de la réponse
-    L4_IPC_Message res_msg;
-    if (l4_ipc_recv(&res_msg) != SUCCESS) {
-        return ERR_IPC_FAILED;
-    }
-
-    // Copie du résultat vers le buffer de réponse
-    for(int i=0; i<4; i++) {
-        ((uint64_t*)response)[i] = res_msg.payload[i];
-    }
-
-    return SUCCESS;
+    *response = result;
+    return BAURA_RPC_OK;
 }

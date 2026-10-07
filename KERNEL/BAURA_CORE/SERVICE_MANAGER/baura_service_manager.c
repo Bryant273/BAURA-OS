@@ -37,7 +37,7 @@ void service_manager_init(void) {
 BauraStatus baura_service_register(const char *name, BauraServiceAction start, BauraServiceAction stop, void *context, uint32_t *id) {
     uint32_t index;
     char checked_name[BAURA_NAME_MAX] = {0};
-    if (id == 0 || !copy_name(checked_name, name)) return BAURA_ERR_INVALID_ARGUMENT;
+    if (id == 0 || start == 0 || !copy_name(checked_name, name)) return BAURA_ERR_INVALID_ARGUMENT;
     for (index = 0; index < BAURA_SERVICE_CAPACITY; ++index) {
         uint32_t other;
         if (!services[index].active) continue;
@@ -60,7 +60,7 @@ BauraStatus baura_service_start(uint32_t id) {
     BauraStatus status;
     if (service == 0) return BAURA_ERR_NOT_FOUND;
     if (service->info.state == BAURA_SERVICE_RUNNING) return BAURA_OK;
-    status = service->start == 0 ? BAURA_OK : service->start(service->context);
+    status = service->start(service->context);
     service->info.state = status == BAURA_OK ? BAURA_SERVICE_RUNNING : BAURA_SERVICE_FAILED;
     return status;
 }

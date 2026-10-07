@@ -1,6 +1,12 @@
-void handle_global_shortcuts(uint32_t key_mask) {
-    if (key_mask & 0x1 && key_mask & 0x2 && key_mask & 0x4) {
-        trigger_security_overlay();
+#include "input_handler.h"
+
+int handle_global_shortcuts(uint32_t key_mask,
+                            BauraSecurityOverlayRequest request,
+                            void *context) {
+    if ((key_mask & BAURA_SHORTCUT_SECURITY_OVERLAY_MASK) !=
+        BAURA_SHORTCUT_SECURITY_OVERLAY_MASK) {
+        return BAURA_SHORTCUT_NOT_HANDLED;
     }
+    if (request == nullptr) return BAURA_SHORTCUT_ERR_UNAVAILABLE;
+    return request(context);
 }
-void trigger_security_overlay() { /* Blur screen -> Show Lock/SignOut/TaskMgr */ }

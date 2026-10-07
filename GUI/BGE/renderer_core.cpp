@@ -1,40 +1,32 @@
+#include "renderer_core.h"
 
-#include <stdint.h>
-#include <cmath>
-#include "framebuffer.h"
+#include <limits>
 
-class BGERenderer {
-public:
-    // Advanced Alpha Blending (Pre-multiplied alpha)
-    static inline uint32_t blend_pixels(uint32_t bg, uint32_t fg, uint8_t alpha) {
-        if (alpha == 0) return bg;
-        if (alpha == 255) return fg;
-
-        uint32_t rb = (bg & 0xFF00FF) + (((fg & 0xFF00FF) - (bg & 0xFF00FF)) * alpha >> 8);
-        uint32_t g = (bg & 0x00FF00) + (((fg & 0x00FF00) - (bg & 0x00FF00)) * alpha >> 8);
-        return (rb & 0xFF00FF) | (g & 0x00FF00);
+bool bge_framebuffer_valid(const BGEFramebuffer &framebuffer) {
+    if (framebuffer.pixels == nullptr || framebuffer.width == 0 ||
+        framebuffer.height == 0 ||
+        framebuffer.width >
+            static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+        framebuffer.height >
+            static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+        framebuffer.stride_pixels < framebuffer.width) return false;
+    if (static_cast<size_t>(framebuffer.height) >
+        std::numeric_limits<size_t>::max() / framebuffer.stride_pixels) {
+        return false;
     }
+    return framebuffer.capacity_pixels >=
+           static_cast<size_t>(framebuffer.height) *
+               framebuffer.stride_pixels;
+}
 
-    // High-quality rounded rectangle with anti-aliasing
-    void draw_rounded_rect_aa(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t r, uint32_t color, uint8_t alpha) {
-        for (uint32_t i = 0; i < h; i++) {
-            for (uint32_t j = 0; j < w; j++) {
-                float dx = (j < r) ? (j - r) : (j > w - r - 1) ? (j - (w - r - 1)) : 0;
-                float dy = (i < r) ? (i - r) : (i > h - r - 1) ? (i - (h - r - 1)) : 0;
-                float dist = std::sqrt(dx*dx + dy*dy);
-
-                if (dist <= r) {
-                    uint8_t final_alpha = alpha;
-                    if (dist > r - 1.0f) final_alpha = (uint8_t)((r - dist) * 255);
-                    draw_pixel_alpha(x + j, y + i, color, final_alpha);
-                }
-            }
-        }
+uint32_t bge_blend_pixel(uint32_t background, uint32_t foreground,
+                         uint8_t alpha) {
+    const uint32_t inverse = 255u - alpha;
+    uint32_t result = 0xFF000000u;
+    for (uint32_t shift = 0; shift <= 16; shift += 8) {
+        const uint32_t fg = (foreground >> shift) & 0xFFu;
+        const uint32_t bg = (background >> shift) & 0xFFu;
+        result |= ((fg * alpha + bg * inverse + 127u) / 255u) << shift;
     }
-
-    void draw_pixel_alpha(uint32_t x, uint32_t y, uint32_t color, uint8_t alpha) {
-        if (x >= baura_fb.width || y >= baura_fb.height) return;
-        uint32_t bg = baura_fb.buffer[y * baura_fb.pitch + x];
-        baura_fb.buffer[y * baura_//pitch + x] = blend_pixels(bg, color, alpha);
-    }
-};
+    return result;
+}

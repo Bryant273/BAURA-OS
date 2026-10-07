@@ -1,29 +1,50 @@
+#include "ui_framework.h"
 
-#include "window_manager.cpp"
+#include "../UI_FRAMEWORK/baura_theme.h"
 
-class BGEUIFramework {
-    BGEWindowManager wm;
-    BGERenderer renderer;
+#include <cmath>
 
-public:
-    void render_desktop() {
-        // 1. Draw Wallpaper (Simple gradient for now)
-        renderer.draw_gradient_rect(0, 0, baura_fb.width, baura_fb.height, 0x1a2a6c, 0xb21f1f, 255);
+BGEUIFramework::BGEUIFramework(BGERenderer &target)
+    : renderer(target), window_manager(target) {}
 
-        // 2. Draw Windows
-        wm.composite();
+uint32_t BGEUIFramework::create_window(const std::string &title,
+                                       BGERect bounds) {
+    return window_manager.create_window(title, bounds);
+}
 
-        // 3. Draw Split Taskbar (Bottom)
-        uint32_t taskbar_h = 45;
-        uint32_t taskbar_y = baura_fb.height - taskbar_h;
+bool BGEUIFramework::close_window(uint32_t id) {
+    return window_manager.close_window(id);
+}
 
-        // Taskbar Background (Glassmorphism)
-        renderer.draw_rounded_rect(0, taskbar_y, baura_fb.width, taskbar_h, 0, 0x111111, 150);
+bool BGEUIFramework::handle_click(int x, int y) {
+    const BGEFramebuffer &fb = renderer.framebuffer();
+    if (renderer.valid() &&
+        system_taskbar.handle_click(x, y, fb.width, fb.height)) return true;
+    return window_manager.handle_click(x, y);
+}
 
-        // Left Side: Start Button & Dynamic Apps
-        renderer.draw_rounded_rect(10, taskbar_y + 5, 40, 35, 8, 0x0078D7, 255); // Start Button
+bool BGEUIFramework::handle_pointer(BGEPointerEvent event, int x, int y) {
+    if (event == BGEPointerEvent::PRESS) return handle_click(x, y);
+    if (event == BGEPointerEvent::MOVE) return window_manager.drag_to(x, y);
+    window_manager.end_drag();
+    return true;
+}
 
-        // Right Side: System Tray (Battery, Network, Clock)
-        renderer.draw_rounded_rect(baura_fb.width - 150, taskbar_y + 5, 140, 35, 8, 0x333333, 200);
-    }
-};
+void BGEUIFramework::render_desktop(float animation_phase) {
+    if (!renderer.valid()) return;
+    const BGEFramebuffer &fb = renderer.framebuffer();
+    const float phase = std::isfinite(animation_phase) ? animation_phase : 0.0f;
+    const uint8_t blend = static_cast<uint8_t>(
+        (std::sin(phase) + 1.0f) * 42.0f);
+    const uint32_t top = BGERenderer::blend_pixels(
+        BauraTheme::Background, 0xFF233B62u, blend);
+    const uint32_t bottom = BGERenderer::blend_pixels(
+        0xFF182D3Bu, 0xFF34254Bu, blend);
+    renderer.draw_gradient_rect(0, 0, static_cast<int>(fb.width),
+                                static_cast<int>(fb.height), top, bottom);
+    window_manager.composite();
+    system_taskbar.render(renderer);
+}
+
+BGEWindowManager &BGEUIFramework::windows() { return window_manager; }
+BauraTaskbar &BGEUIFramework::taskbar() { return system_taskbar; }

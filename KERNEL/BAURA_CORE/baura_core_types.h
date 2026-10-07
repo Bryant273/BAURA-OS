@@ -14,7 +14,9 @@ typedef enum {
     BAURA_ERR_NOT_FOUND = -3,
     BAURA_ERR_ALREADY_EXISTS = -4,
     BAURA_ERR_INVALID_STATE = -5,
-    BAURA_ERR_LIMIT = -6
+    BAURA_ERR_LIMIT = -6,
+    BAURA_ERR_PERMISSION = -7,
+    BAURA_ERR_IO = -8
 } BauraStatus;
 
 #define BAURA_NAME_MAX 32u

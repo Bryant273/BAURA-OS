@@ -1,5 +1,7 @@
 
-# BAURA OS Initial RAMDisk Manifest
+# Planned BAURA OS Initial RAMDisk contents.
+# This manifest is not yet consumed by the build; listed binaries are not
+# claimed to exist until an image packer and module targets are integrated.
 [KERNEL_MODULES]
 /drivers/storage/virtio_block.bin
 /drivers/input/usb_hid.bin

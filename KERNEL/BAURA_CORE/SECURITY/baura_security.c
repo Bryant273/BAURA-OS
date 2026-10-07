@@ -7,6 +7,8 @@
 typedef struct { uint32_t slot; BauraCapability capability; uint8_t active; } CapabilitySlot;
 typedef struct { uint64_t task_id; CapabilitySlot slots[BAURA_CAPABILITY_SLOTS]; uint8_t active; } CapabilitySpace;
 static CapabilitySpace spaces[BAURA_CSPACE_CAPACITY];
+static BauraSecurityAuthorityCheck authority_check;
+static void *authority_context;
 
 static int32_t find_space(uint64_t task_id) {
     uint32_t index;
@@ -17,6 +19,22 @@ static int32_t find_space(uint64_t task_id) {
 void security_init(void) {
     uint32_t index;
     for (index = 0; index < BAURA_CSPACE_CAPACITY; ++index) spaces[index].active = 0;
+}
+
+BauraStatus baura_security_set_authority_check(
+    BauraSecurityAuthorityCheck check, void *context) {
+    authority_check = check;
+    authority_context = context;
+    return BAURA_OK;
+}
+
+BauraStatus baura_security_authorize(
+    uint64_t subject_id, const char *capability_name) {
+    if (subject_id == 0 || capability_name == 0 || capability_name[0] == '\0') {
+        return BAURA_ERR_INVALID_ARGUMENT;
+    }
+    if (authority_check == 0) return BAURA_ERR_INVALID_STATE;
+    return authority_check(authority_context, subject_id, capability_name);
 }
 
 int sec_create_cspace(uint64_t task_id) {

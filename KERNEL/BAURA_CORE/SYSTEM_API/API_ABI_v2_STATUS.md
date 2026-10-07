@@ -99,10 +99,26 @@ be considered operational.
 `make baura-core-x86_64` builds a freestanding static archive with the x86_64
 cross compiler. `make test-core-x86_64` runs the C Core suite with a 64-bit
 host ABI. `baura_core_initial_task_start` is a platform-neutral Core entry
-point that starts the service registry and reports readiness through a
-caller-supplied console callback; the future seL4 initial task is responsible
-for validating its real boot information and capabilities before calling it.
-Neither target currently links the archive into seL4 or an EFI/GRUB image.
+point that requires a boot-info validator, initializes the Core only after
+validation succeeds, and reports readiness through a caller-supplied console
+callback. Neither target currently links the archive into seL4 or an EFI/GRUB
+image.
+
+The Core exposes task lifecycle and authority-check backend contracts for a
+platform adapter. Process launch returns `BAURA_ERR_INVALID_STATE` until a
+complete task backend is installed. Capability authorization likewise fails
+closed when no authority checker is installed. The initial-task entry also
+requires a supported versioned platform structure, an opaque boot-info object,
+and a validator; validation must succeed before Core initialization. These
+contracts do not themselves create seL4 tasks, validate seL4 capabilities, or
+define a kernel-specific BootInfo layout. There is no concrete seL4 adapter or
+IPC transport in the current build.
+
+The C VFS path resolver uses the registered volume manager for drive-name
+resolution. It normalizes repeated separators and `.` components and rejects
+`..` traversal. This connects logical paths to registered volumes, not to a
+filesystem: mounted filesystem operations and physical storage drivers remain
+unimplemented.
 
 The checked-in seL4 tree (version 16.0.0-dev) declares the `pc99` platform for
 both `ia32` and `x86_64`. `make sel4-kernel-x86_64` explicitly configures
