@@ -8,7 +8,11 @@ HOST_CC ?= cc
 HOST_CXX ?= c++
 HOST_CMAKE ?= cmake
 PYTHON ?= python3
+ifeq ($(shell which x86_64-elf-gcc 2>/dev/null),)
+X86_64_CROSS_COMPILE ?=
+else
 X86_64_CROSS_COMPILE ?= x86_64-elf-
+endif
 X86_64_CC := $(X86_64_CROSS_COMPILE)gcc
 X86_64_AR := $(X86_64_CROSS_COMPILE)ar
 BUILD_DIR := build
@@ -17,8 +21,8 @@ SEL4_SOURCE_DIR := KERNEL/L4/sel4
 SEL4_X86_64_BUILD_DIR := $(BUILD_DIR)/sel4-x86_64
 SEL4_STAGE_DIR := $(SEL4_X86_64_BUILD_DIR)/stage
 SEL4_INITIAL_TASK_ELF := $(BUILD_DIR)/x86_64/baura_init.elf
-SEL4_ISO_ROOT := $(BUILD_DIR)/sel4-iso
-SEL4_ISO := $(BUILD_DIR)/baura-sel4-x86_64.iso
+SEL4_ISO_ROOT := $(BUILD_DIR)/baura-iso
+SEL4_ISO := $(BUILD_DIR)/baura-os.iso
 SEL4_CMAKE_ARGS ?=
 QEMU_X86_64 ?= qemu-system-x86_64
 CFLAGS := -std=gnu11 -m32 -ffreestanding -fno-pic -fno-pie -fno-stack-protector -fno-builtin -Wall -Wextra -Werror -O2
@@ -34,6 +38,7 @@ CORE_SOURCES := \
     KERNEL/BAURA_CORE/CONFIGURATION/baura_configuration.c \
     KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c \
     KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_manager.c \
+    KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c \
     KERNEL/BAURA_CORE/DRIVER_MANAGER/baura_driver_manager.c \
     KERNEL/BAURA_CORE/EVENT_BUS/baura_event_bus.c \
     KERNEL/BAURA_CORE/FAULT_ENGINE/baura_fault_engine.c \
@@ -67,14 +72,20 @@ X86_64_CFLAGS ?= -std=gnu11 -m64 -ffreestanding -fno-pic -fno-pie -fno-stack-pro
 
 .PHONY: all legacy32 legacy32-iso run-legacy32 iso run \
 	test-core test-core-x86_64 test-abi test-rust \
-	test-boot test-communication test-gui test-integration \
+	test-boot test-communication test-gui test-driver-docs test-integration \
 	gui-preview sel4-source-check \
 	validate-all \
 	baura-core-x86_64 sel4-configure-x86_64 sel4-kernel-x86_64 \
 	sel4-initial-task-x86_64 sel4-iso-x86_64 run-sel4-x86_64 \
+	baura-iso run-baura \
 	baura-x86_64 clean
 
 all: baura-x86_64
+
+# Alias produit : noms orientés BAURA OS
+baura-iso: sel4-iso-x86_64
+
+run-baura: run-sel4-x86_64
 
 legacy32: baura_os.elf
 
@@ -106,6 +117,8 @@ sel4-configure-x86_64: sel4-source-check
 	$(HOST_CMAKE) -S $(SEL4_SOURCE_DIR) -B $(SEL4_X86_64_BUILD_DIR) \
 		-DKernelPlatform=pc99 -DKernelSel4Arch=x86_64 \
 		-DKernelVerificationBuild=OFF -DKernelPrinting=ON \
+		-DKernelSupportPCID=OFF -DKernelHugePage=OFF -DKernelFSGSBase=msr \
+		-DLibSel4UseThreadLocals=OFF \
 		$(SEL4_CMAKE_ARGS)
 
 sel4-kernel-x86_64: sel4-configure-x86_64
@@ -124,10 +137,29 @@ sel4-initial-task-x86_64: baura-core-x86_64 sel4-kernel-x86_64 $(SEL4_INITIAL_TA
 
 $(SEL4_INITIAL_TASK_ELF): BOOT/SEL4/initial_task.c \
 		BOOT/SEL4/initial_task_start.S BOOT/SEL4/initial_task.ld \
+		BOOT/FIRMWARE/FRAMEBUFFER/baura_boot_splash.c \
+		BOOT/FIRMWARE/FRAMEBUFFER/baura_desktop_manager.c \
+		BOOT/SEL4/baura_ps2_sel4.c \
+		BOOT/SEL4/pci_backend.c BOOT/SEL4/pci_backend_sel4.c \
+		BOOT/SEL4/pci_bar.c \
 		$(BUILD_DIR)/x86_64/libbaura_core.a
 	mkdir -p $(@D)
 	$(X86_64_CC) $(X86_64_CFLAGS) -I$(SEL4_STAGE_DIR)/libsel4/include \
 		-c BOOT/SEL4/initial_task.c -o $(BUILD_DIR)/x86_64/baura_init.o
+	$(X86_64_CC) $(X86_64_CFLAGS) \
+		-c BOOT/FIRMWARE/FRAMEBUFFER/baura_boot_splash.c \
+		-o $(BUILD_DIR)/x86_64/baura_boot_splash.o
+	$(X86_64_CC) $(X86_64_CFLAGS) \
+		-c BOOT/FIRMWARE/FRAMEBUFFER/baura_desktop_manager.c \
+		-o $(BUILD_DIR)/x86_64/baura_desktop_manager.o
+	$(X86_64_CC) $(X86_64_CFLAGS) -I$(SEL4_STAGE_DIR)/libsel4/include \
+		-c BOOT/SEL4/baura_ps2_sel4.c -o $(BUILD_DIR)/x86_64/baura_ps2_sel4.o
+	$(X86_64_CC) $(X86_64_CFLAGS) -I$(SEL4_STAGE_DIR)/libsel4/include \
+		-c BOOT/SEL4/pci_backend.c -o $(BUILD_DIR)/x86_64/pci_backend.o
+	$(X86_64_CC) $(X86_64_CFLAGS) -I$(SEL4_STAGE_DIR)/libsel4/include \
+		-c BOOT/SEL4/pci_backend_sel4.c -o $(BUILD_DIR)/x86_64/pci_backend_sel4.o
+	$(X86_64_CC) $(X86_64_CFLAGS) -I$(SEL4_STAGE_DIR)/libsel4/include \
+		-c BOOT/SEL4/pci_bar.c -o $(BUILD_DIR)/x86_64/pci_bar.o
 	$(X86_64_CC) -m64 -c BOOT/SEL4/initial_task_start.S \
 		-o $(BUILD_DIR)/x86_64/baura_init_start.o
 	$(X86_64_CC) -m64 -nostdlib -static -no-pie \
@@ -135,6 +167,12 @@ $(SEL4_INITIAL_TASK_ELF): BOOT/SEL4/initial_task.c \
 		-Wl,-z,noexecstack -o $@ \
 		$(BUILD_DIR)/x86_64/baura_init_start.o \
 		$(BUILD_DIR)/x86_64/baura_init.o \
+		$(BUILD_DIR)/x86_64/baura_boot_splash.o \
+		$(BUILD_DIR)/x86_64/baura_desktop_manager.o \
+		$(BUILD_DIR)/x86_64/baura_ps2_sel4.o \
+		$(BUILD_DIR)/x86_64/pci_backend.o \
+		$(BUILD_DIR)/x86_64/pci_backend_sel4.o \
+		$(BUILD_DIR)/x86_64/pci_bar.o \
 		$(BUILD_DIR)/x86_64/libbaura_core.a
 
 $(SEL4_INITIAL_TASK_ELF): | sel4-kernel-x86_64
@@ -152,7 +190,12 @@ $(SEL4_ISO): sel4-kernel-x86_64 $(SEL4_INITIAL_TASK_ELF) BOOT/SEL4/grub.cfg
 	$(GRUB_MKRESCUE) -o $@ $(SEL4_ISO_ROOT)
 
 run-sel4-x86_64: $(SEL4_ISO)
-	$(QEMU_X86_64) -m 2G -cdrom $(SEL4_ISO) -serial stdio -no-reboot -no-shutdown
+	$(QEMU_X86_64) -m 2G \
+		-cdrom $(SEL4_ISO) \
+		-cpu max \
+		-vga std \
+		-serial stdio \
+		-no-reboot -no-shutdown
 
 legacy32-iso: baura_os.iso
 
@@ -196,6 +239,35 @@ test-boot:
 		-o $(BUILD_DIR)/uefi_memory_map_test \
 		BOOT/tests/uefi_memory_map_test.c BOOT/FIRMWARE/UEFI/uefi_mem.c
 	$(BUILD_DIR)/uefi_memory_map_test
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -IBOOT \
+		-o $(BUILD_DIR)/boot_splash_test \
+		BOOT/tests/boot_splash_test.c BOOT/FIRMWARE/FRAMEBUFFER/baura_boot_splash.c
+	$(BUILD_DIR)/boot_splash_test
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -IBOOT \
+		-o $(BUILD_DIR)/desktop_manager_test \
+		BOOT/tests/desktop_manager_test.c \
+		BOOT/FIRMWARE/FRAMEBUFFER/baura_desktop_manager.c \
+		BOOT/FIRMWARE/FRAMEBUFFER/baura_boot_splash.c
+	$(BUILD_DIR)/desktop_manager_test
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I. \
+		-o $(BUILD_DIR)/pci_backend_test \
+		BOOT/tests/pci_backend_test.c BOOT/SEL4/pci_backend.c \
+		KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c \
+		KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c
+	$(BUILD_DIR)/pci_backend_test
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -I. \
+		-o $(BUILD_DIR)/pci_bar_test \
+		BOOT/tests/pci_bar_test.c BOOT/SEL4/pci_bar.c BOOT/SEL4/pci_backend.c \
+		KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c
+	$(BUILD_DIR)/pci_bar_test
+
+test-driver-docs:
+	mkdir -p $(BUILD_DIR)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror \
+		-o $(BUILD_DIR)/driver_docs_examples_test \
+		KERNEL/BAURA_CORE/DRIVER_DOCS/examples/examples_test.c \
+		KERNEL/BAURA_CORE/DRIVER_DOCS/examples/bootinfo_chunks.c
+	$(BUILD_DIR)/driver_docs_examples_test
 
 test-communication:
 	mkdir -p $(BUILD_DIR)
@@ -244,7 +316,20 @@ gui-preview: test-gui
 	BAURA_GUI_PREVIEW_PATH=$(BUILD_DIR)/baura-gui-preview.bmp \
 		$(BUILD_DIR)/gui_render_test
 
-test-integration: test-boot test-communication test-gui test-core
+test-bui:
+	mkdir -p $(BUILD_DIR)
+	$(HOST_CC) -std=c11 -Wall -Wextra -Werror -IGUI -I. \
+		-o $(BUILD_DIR)/bui_sdk_test \
+		GUI/tests/bui_sdk_test.c \
+		GUI/UI/bui_layout.c \
+		GUI/UI/bui_widget.c \
+		GUI/UI/bui_app.c \
+		GUI/UI/baura_aesb.c \
+		GUI/SHELL/bui_shell_apps.c \
+		GUI/PROTOCOL/bsp_client.c
+	$(BUILD_DIR)/bui_sdk_test
+
+test-integration: test-boot test-bui test-communication test-gui test-driver-docs test-core
 
 validate-all: test-integration test-rust test-core-x86_64 baura-x86_64
 

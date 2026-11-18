@@ -11,6 +11,19 @@ extern "C" {
 #define BAURA_BOOT_HANDOFF_MAGIC UINT64_C(0x4241555241424F54)
 #define BAURA_BOOT_HANDOFF_ABI_VERSION 1u
 
+#define BAURA_BOOT_VIDEO_MAGIC UINT32_C(0x5649444F) /* 'VIDO' */
+
+typedef struct {
+    uint32_t magic;
+    uint32_t width;
+    uint32_t height;
+    uint32_t pitch;
+    uint8_t  bpp;
+    uint8_t  format; /* 0 = RGBX, 1 = BGRX */
+    uint16_t reserved;
+    uint64_t physical_address;
+} BauraBootVideoHandoff;
+
 typedef struct {
     uint64_t magic;
     uint32_t abi_version;

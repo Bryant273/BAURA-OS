@@ -1,0 +1,5 @@
+[package]
+name = "baura-sysmon"
+version.workspace = true
+edition.workspace = true
+

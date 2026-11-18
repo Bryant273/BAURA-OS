@@ -29,6 +29,10 @@
   button, notification surfaces, progress bubbles, login, and installer. Its
   framebuffer-based `draw_boot_splash` function provides a branded startup
   screen for a future display-capable boot stage.
+- The BGE taskbar uses two separated translucent glass capsules: launch/search
+  and app shortcuts on the left, system status on the right. The software
+  effects engine blurs each capsule's backdrop and adds a subtle edge highlight;
+  this is a CPU-rendered effect and has not been connected to the seL4 boot GUI.
 - `BAURA_GUI_FFI.h/.cpp` exposes surface, framebuffer, compositor, and window
   operations to C callers. Compositor handles retain their display server, so
   destroying the caller's display handle cannot leave a dangling compositor.
@@ -42,8 +46,9 @@ registration/start/stop of the GUI runtime through the Core service manager.
 Run this target after C++ compiler and Make are available in the environment.
 `make gui-preview` reruns the checks and writes
 `build/baura-gui-preview.bmp`. Open that BMP on the host to inspect a static
-software-rendered desktop snapshot. It is not a screenshot of the seL4 boot
-image and does not demonstrate live GUI integration. From WSL, open it in
+software-rendered desktop snapshot with sample apps and status. It is not a
+screenshot of the seL4 boot image and does not demonstrate live GUI integration.
+From WSL, open it in
 Windows with `explorer.exe "$(wslpath -w build/baura-gui-preview.bmp)"`.
 
 ## Platform integration still required

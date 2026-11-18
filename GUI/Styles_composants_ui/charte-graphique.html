@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAURA – Charte graphique</title>
+<link rel="icon" href="icones/favicon.svg" type="image/svg+xml">
+<style>
+  :root{--indigo:#4F46E5;--violet:#8B5CF6;--lavande:#C4B5FD;--or:#AB8E18;--nuit:#0F0B2E;--bg:#fff;--fg:#0F0B2E;--mut:#5b5880;--line:#e6e3f5;--card:#faf9ff}
+  @media (prefers-color-scheme:dark){:root{--bg:#0F0B2E;--fg:#f3f1ff;--mut:#a9a5d1;--line:#2a2557;--card:#17123f}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:"Inter","Segoe UI",system-ui,sans-serif;line-height:1.55}
+  .wrap{max-width:980px;margin:0 auto;padding:0 16px 80px}
+  header{padding:56px 0 32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  header img{height:84px}
+  h1{margin:0;font-size:clamp(28px,5vw,44px);letter-spacing:-.02em}
+  header p{margin:4px 0 0;color:var(--mut)}
+  h2{margin:56px 0 6px;font-size:22px}
+  .lead{margin:0 0 20px;color:var(--mut)}
+  .grid{display:grid;gap:14px}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .card{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card)}
+  .card .cap{padding:10px 14px;font-size:13px;color:var(--mut);border-top:1px solid var(--line)}
+  .show{display:grid;place-items:center;height:220px}
+  .show img{max-height:170px;max-width:80%}
+  .sw{height:110px;display:flex;align-items:flex-end;padding:12px;font-weight:600}
+  .meta{padding:12px 14px;font-size:13px;color:var(--mut)}
+  .meta b{color:var(--fg);display:block;font-size:15px}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+  ul{margin:8px 0 0;padding-left:20px;color:var(--mut)}
+  .do,.dont{padding:14px 16px;border-radius:14px;border:1px solid var(--line)}
+  .do b{color:#12805c}.dont b{color:#c8323f}
+  .icons{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;padding:24px}
+  .icons img{display:block;border-radius:0}
+  .type{padding:20px 24px}
+  .type .big{font-size:44px;font-weight:700;letter-spacing:-.02em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logos/baura-symbole-couleur.svg" alt="">
+    <div><h1>Charte graphique BAURA</h1><p>Symbole, couleurs, typographie et règles d'usage – BAURA OS</p></div>
+  </header>
+
+  <h2>1. Le symbole</h2>
+  <p class="lead">Un « B » construit avec trois formes simples : une barre arrondie et deux demi-disques. Le petit point doré dans le creux est la signature, l'« aura ».</p>
+  <div class="grid g3">
+    <div class="card"><div class="show" style="background:#fff"><img src="logos/baura-symbole-couleur.svg" alt=""></div><div class="cap">Couleur – sur fond clair</div></div>
+    <div class="card"><div class="show" style="background:#fff"><img src="logos/baura-symbole-noir.svg" alt=""></div><div class="cap">Noir – impression, documents</div></div>
+    <div class="card"><div class="show" style="background:#000"><img src="logos/baura-symbole-blanc.svg" alt=""></div><div class="cap">Blanc – sur fond sombre</div></div>
+  </div>
+
+  <h2>2. Logo avec le nom</h2>
+  <p class="lead">Symbole au-dessus du mot BAURA (Inter Bold). À utiliser quand il y a la place ; sinon, le symbole seul suffit.</p>
+  <div class="grid g3">
+    <div class="card"><div class="show" style="background:#fff"><img src="logos/baura-logo-couleur.svg" alt=""></div><div class="cap">Couleur</div></div>
+    <div class="card"><div class="show" style="background:#fff"><img src="logos/baura-logo-noir.svg" alt=""></div><div class="cap">Noir</div></div>
+    <div class="card"><div class="show" style="background:#000"><img src="logos/baura-logo-blanc-sur-noir.svg" alt=""></div><div class="cap">Blanc sur noir</div></div>
+  </div>
+
+  <h2>3. Couleurs</h2>
+  <div class="grid g3">
+    <div class="card"><div class="sw" style="background:#4F46E5;color:#fff">Indigo</div><div class="meta"><b>#4F46E5</b>Barre du B · couleur principale, boutons, liens</div></div>
+    <div class="card"><div class="sw" style="background:#8B5CF6;color:#fff">Violet</div><div class="meta"><b>#8B5CF6</b>Demi-disque haut · accents, survol</div></div>
+    <div class="card"><div class="sw" style="background:#C4B5FD;color:#0F0B2E">Lavande</div><div class="meta"><b>#C4B5FD</b>Demi-disque bas · fonds doux, bordures</div></div>
+    <div class="card"><div class="sw" style="background:#AB8E18;color:#fff">Or</div><div class="meta"><b>#AB8E18</b>Le point · à utiliser avec parcimonie</div></div>
+    <div class="card"><div class="sw" style="background:#0F0B2E;color:#fff">Nuit</div><div class="meta"><b>#0F0B2E</b>Fond sombre, texte principal</div></div>
+    <div class="card"><div class="sw" style="background:#FAF9FF;color:#0F0B2E;border-bottom:1px solid var(--line)">Brume</div><div class="meta"><b>#FAF9FF</b>Fond clair, barres de fenêtre</div></div>
+  </div>
+  <ul><li>Proportion conseillée : 70 % neutres (blanc / nuit), 25 % indigo-violet-lavande, 5 % or.</li>
+  <li>Le texte violet #8B5CF6 sur blanc a un contraste limité : pour le texte courant, préférer Nuit #0F0B2E ou Indigo #4F46E5.</li></ul>
+
+  <h2>4. Typographie</h2>
+  <div class="card type">
+    <div class="big">Inter Bold – Titres &amp; nom</div>
+    <p style="font-size:18px;margin:8px 0 0">Inter Regular / Medium – interface et texte courant. 14 à 16 px dans les fenêtres, titres en 600–700.</p>
+    <p class="lead" style="margin-top:8px">Alternative disponible partout : Segoe UI / system-ui.</p>
+  </div>
+
+  <h2>5. Icônes d'application</h2>
+  <p class="lead">Carré arrondi sombre avec le symbole en couleur. Fournies en SVG, PNG (1024, 512, 192, 180) et favicon (16, 32, 48, .ico).</p>
+  <div class="card icons">
+    <img src="icones/baura-icone-app-192.png" width="96" alt="">
+    <img src="icones/baura-icone-app-claire-512.png" width="96" alt="">
+    <img src="icones/favicon-48.png" width="48" alt="">
+    <img src="icones/favicon-32.png" width="32" alt="">
+    <img src="icones/favicon-16.png" width="16" alt="">
+  </div>
+
+  <h2>6. Règles d'usage</h2>
+  <div class="grid g2">
+    <div class="do"><b>À faire</b><ul><li>Laisser autour du symbole un espace libre au moins égal à la largeur de la barre.</li><li>Utiliser la version couleur sur blanc ou Nuit, la version blanche sur fond foncé ou coloré.</li><li>Taille minimale : 16 px de haut pour le symbole, 48 px pour le logo avec le nom.</li></ul></div>
+    <div class="dont"><b>À éviter</b><ul><li>Déformer, tourner ou changer les proportions du symbole.</li><li>Modifier l'ordre ou les couleurs des trois formes.</li><li>Poser la version couleur sur un fond violet ou indigo (utiliser le blanc).</li><li>Enlever le point doré dans la version couleur.</li></ul></div>
+  </div>
+</div>
+</body>
+</html>

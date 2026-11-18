@@ -1,0 +1,13 @@
+--- a/GUI/BGE/window_manager.h	2026-10-14 07:50:33.939330376 +0000
++++ b/GUI/BGE/window_manager.h	2026-10-14 07:50:33.955799274 +0000
+@@ -32,6 +32,10 @@
+     uint32_t window_at(int x, int y) const;
+     bool handle_click(int x, int y);
+     void composite();
++    // Lecture seule de l'état (ordre = z-order, dernier = au premier plan) : permet à un compositeur
++    // animé d'observer ouverture/fermeture/réduction/agrandissement sans dupliquer l'état.
++    const std::vector<BGEWindow> &windows_view() const { return windows; }
++    uint32_t dragging() const { return dragging_id; }
+ 
+ private:
+     BGEWindow *find(uint32_t id);

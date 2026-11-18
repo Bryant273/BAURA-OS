@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0F766E"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#CCFBF1" stop-opacity="1.00"/></linearGradient>
+<linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E1B4B" stop-opacity="1.00"/><stop offset="1" stop-color="#0F0B2E" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M21 9H43A7 7 0 0 1 50 16V48A7 7 0 0 1 43 55H21A7 7 0 0 1 14 48V16A7 7 0 0 1 21 9Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M21 9H43A7 7 0 0 1 50 16V48A7 7 0 0 1 43 55H21A7 7 0 0 1 14 48V16A7 7 0 0 1 21 9Z" fill="url(#g1)"/>
+<path d="M22 14H42A3 3 0 0 1 45 17V22A3 3 0 0 1 42 25H22A3 3 0 0 1 19 22V17A3 3 0 0 1 22 14Z" fill="url(#g2)"/>
+<path d="M23 21L28 21" fill="none" stroke="#5EEAD4" stroke-opacity="1.00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M21 30H24A2 2 0 0 1 26 32V33.4A2 2 0 0 1 24 35.4H21A2 2 0 0 1 19 33.4V32A2 2 0 0 1 21 30Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M21 38H24A2 2 0 0 1 26 40V41.4A2 2 0 0 1 24 43.4H21A2 2 0 0 1 19 41.4V40A2 2 0 0 1 21 38Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M21 46H24A2 2 0 0 1 26 48V49.4A2 2 0 0 1 24 51.4H21A2 2 0 0 1 19 49.4V48A2 2 0 0 1 21 46Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M30 30H33A2 2 0 0 1 35 32V33.4A2 2 0 0 1 33 35.4H30A2 2 0 0 1 28 33.4V32A2 2 0 0 1 30 30Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M30 38H33A2 2 0 0 1 35 40V41.4A2 2 0 0 1 33 43.4H30A2 2 0 0 1 28 41.4V40A2 2 0 0 1 30 38Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M30 46H33A2 2 0 0 1 35 48V49.4A2 2 0 0 1 33 51.4H30A2 2 0 0 1 28 49.4V48A2 2 0 0 1 30 46Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M39 30H42A2 2 0 0 1 44 32V33.4A2 2 0 0 1 42 35.4H39A2 2 0 0 1 37 33.4V32A2 2 0 0 1 39 30Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M39 38H42A2 2 0 0 1 44 40V41.4A2 2 0 0 1 42 43.4H39A2 2 0 0 1 37 41.4V40A2 2 0 0 1 39 38Z" fill="#0F766E" fill-opacity="0.90"/>
+<path d="M39 38H42A2 2 0 0 1 44 40V49.4A2 2 0 0 1 42 51.4H39A2 2 0 0 1 37 49.4V40A2 2 0 0 1 39 38Z" fill="#E5C34A"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCA5A5"/><stop offset="1" stop-color="#B91C1C"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#FEE2E2" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M32 10H32A8 8 0 0 1 40 18V30A8 8 0 0 1 32 38H32A8 8 0 0 1 24 30V18A8 8 0 0 1 32 10Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M32 10H32A8 8 0 0 1 40 18V30A8 8 0 0 1 32 38H32A8 8 0 0 1 24 30V18A8 8 0 0 1 32 10Z" fill="url(#g1)"/>
+<path d="M18 30a14 14 0 0 0 28 0" fill="none" stroke="#FFFFFF" stroke-opacity="1.00" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M32 44H32A1.5 1.5 0 0 1 33.5 45.5V48.5A1.5 1.5 0 0 1 32 50H32A1.5 1.5 0 0 1 30.5 48.5V45.5A1.5 1.5 0 0 1 32 44Z" fill="#FFFFFF"/>
+<path d="M24.7 50H39.3A1.7 1.7 0 0 1 41 51.7V51.7A1.7 1.7 0 0 1 39.3 53.4H24.7A1.7 1.7 0 0 1 23 51.7V51.7A1.7 1.7 0 0 1 24.7 50Z" fill="#FFFFFF"/>
+<path d="M28.7 22A3.3 3.3 0 1 1 35.3 22A3.3 3.3 0 1 1 28.7 22Z" fill="#B91C1C"/>
+</svg>

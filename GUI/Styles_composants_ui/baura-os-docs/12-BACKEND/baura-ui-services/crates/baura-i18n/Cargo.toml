@@ -1,0 +1,5 @@
+[package]
+name = "baura-i18n"
+version.workspace = true
+edition.workspace = true
+

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="#EA580C"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#FFE7D1" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M23 25v-4a9 9 0 0 1 18 0v4" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M20 24H44A7 7 0 0 1 51 31V44A7 7 0 0 1 44 51H20A7 7 0 0 1 13 44V31A7 7 0 0 1 20 24Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M20 24H44A7 7 0 0 1 51 31V44A7 7 0 0 1 44 51H20A7 7 0 0 1 13 44V31A7 7 0 0 1 20 24Z" fill="url(#g1)"/>
+<path d="M26.41 29A0.91 0.91 0 0 1 27.33 29.91V44.09A0.91 0.91 0 0 1 25.5 44.09V29.91A0.91 0.91 0 0 1 26.41 29Z" fill="#EA580C"/>
+<path d="M29.23 29A3.85 3.9 0 0 1 29.23 36.81Z" fill="#EA580C" fill-opacity="0.80"/>
+<path d="M29.23 37.23A3.85 3.89 0 0 1 29.23 45Z" fill="#EA580C" fill-opacity="0.60"/>
+<path d="M32.4 36.31H32.51A0.57 0.57 0 0 1 33.08 36.89V37.11A0.57 0.57 0 0 1 32.51 37.69H32.4A0.57 0.57 0 0 1 31.82 37.11V36.89A0.57 0.57 0 0 1 32.4 36.31Z" fill="#E5C34A"/>
+</svg>

@@ -1,0 +1,6 @@
+[package]
+name = "baura-shell"
+version.workspace = true
+edition.workspace = true
+[dependencies]
+baura-icons = { path = "../baura-icons" }

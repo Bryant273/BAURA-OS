@@ -1,0 +1,3 @@
+Fichiers à supprimer de ton arbre :
+KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner.c
+KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner_enhanced.c

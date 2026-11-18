@@ -1,0 +1,1137 @@
+{
+ "files": {
+  "name": "Fichiers",
+  "category": "système",
+  "alias": [
+   "system-file-manager",
+   "org.gnome.Nautilus",
+   "folder-open"
+  ]
+ },
+ "settings": {
+  "name": "Paramètres",
+  "category": "système",
+  "alias": [
+   "preferences-system",
+   "gnome-control-center",
+   "systemsettings"
+  ]
+ },
+ "terminal": {
+  "name": "Terminal",
+  "category": "système",
+  "alias": [
+   "utilities-terminal",
+   "org.gnome.Terminal"
+  ]
+ },
+ "monitor": {
+  "name": "Moniteur système",
+  "category": "système",
+  "alias": [
+   "utilities-system-monitor",
+   "task-manager",
+   "gnome-system-monitor"
+  ]
+ },
+ "store": {
+  "name": "Boutique",
+  "category": "système",
+  "alias": [
+   "system-software-install",
+   "softwarecenter",
+   "org.gnome.Software",
+   "applications-other"
+  ]
+ },
+ "houb": {
+  "name": "HOUB (navigateur)",
+  "category": "internet",
+  "alias": [
+   "web-browser",
+   "internet-web-browser",
+   "applications-internet"
+  ]
+ },
+ "media": {
+  "name": "BMedia (musique)",
+  "category": "multimédia",
+  "alias": [
+   "multimedia-audio-player",
+   "audio-x-generic",
+   "rhythmbox",
+   "music"
+  ]
+ },
+ "video": {
+  "name": "Vidéos",
+  "category": "multimédia",
+  "alias": [
+   "multimedia-video-player",
+   "video-x-generic",
+   "totem",
+   "videos"
+  ]
+ },
+ "photos": {
+  "name": "Photos",
+  "category": "multimédia",
+  "alias": [
+   "image-viewer",
+   "image-x-generic",
+   "eog",
+   "gwenview"
+  ]
+ },
+ "sound": {
+  "name": "Son",
+  "category": "système",
+  "alias": [
+   "audio-volume-high",
+   "preferences-desktop-sound",
+   "multimedia-volume-control",
+   "pavucontrol"
+  ]
+ },
+ "security": {
+  "name": "Sécurité",
+  "category": "système",
+  "alias": [
+   "security-high",
+   "preferences-system-privacy",
+   "security-medium",
+   "gufw"
+  ]
+ },
+ "update": {
+  "name": "Mise à jour",
+  "category": "système",
+  "alias": [
+   "system-software-update",
+   "software-update-available",
+   "update-manager"
+  ]
+ },
+ "power": {
+  "name": "Énergie",
+  "category": "système",
+  "alias": [
+   "battery",
+   "preferences-system-power",
+   "battery-full",
+   "power-profile"
+  ]
+ },
+ "network": {
+  "name": "Réseau",
+  "category": "système",
+  "alias": [
+   "preferences-system-network",
+   "network-wireless",
+   "network-wired",
+   "nm-applet"
+  ]
+ },
+ "calculator": {
+  "name": "Calculatrice",
+  "category": "accessoires",
+  "alias": [
+   "accessories-calculator",
+   "gnome-calculator",
+   "kcalc"
+  ]
+ },
+ "calendar": {
+  "name": "Calendrier",
+  "category": "bureautique",
+  "alias": [
+   "office-calendar",
+   "x-office-calendar",
+   "gnome-calendar",
+   "korganizer"
+  ]
+ },
+ "clock": {
+  "name": "Horloge",
+  "category": "accessoires",
+  "alias": [
+   "preferences-system-time",
+   "org.gnome.clocks",
+   "alarm-clock"
+  ]
+ },
+ "notes": {
+  "name": "Notes",
+  "category": "bureautique",
+  "alias": [
+   "accessories-notes",
+   "xpad",
+   "org.gnome.Notes"
+  ]
+ },
+ "text-editor": {
+  "name": "Éditeur de texte",
+  "category": "accessoires",
+  "alias": [
+   "accessories-text-editor",
+   "gedit",
+   "org.gnome.TextEditor",
+   "kate"
+  ]
+ },
+ "screenshot": {
+  "name": "Capture d'écran",
+  "category": "accessoires",
+  "alias": [
+   "applets-screenshooter",
+   "gnome-screenshot",
+   "spectacle",
+   "ksnip"
+  ]
+ },
+ "trash": {
+  "name": "Corbeille",
+  "category": "système",
+  "alias": [
+   "user-trash",
+   "user-trash-empty",
+   "edittrash"
+  ]
+ },
+ "trash-full": {
+  "name": "Corbeille (pleine)",
+  "category": "système",
+  "alias": [
+   "user-trash-full"
+  ]
+ },
+ "installer": {
+  "name": "Installateur",
+  "category": "système",
+  "alias": [
+   "system-installer",
+   "ubiquity"
+  ]
+ },
+ "help": {
+  "name": "Aide",
+  "category": "système",
+  "alias": [
+   "help-browser",
+   "help-about",
+   "khelpcenter",
+   "yelp"
+  ]
+ },
+ "contacts": {
+  "name": "Contacts",
+  "category": "bureautique",
+  "alias": [
+   "x-office-address-book",
+   "contact-new",
+   "kaddressbook",
+   "org.gnome.Contacts"
+  ]
+ },
+ "mail": {
+  "name": "Courrier",
+  "category": "internet",
+  "alias": [
+   "internet-mail",
+   "mail-unread",
+   "evolution",
+   "kmail"
+  ]
+ },
+ "weather": {
+  "name": "Météo",
+  "category": "accessoires",
+  "alias": [
+   "weather-few-clouds",
+   "weather-clear",
+   "gnome-weather"
+  ]
+ },
+ "recorder": {
+  "name": "Enregistreur vocal",
+  "category": "multimédia",
+  "alias": [
+   "audio-input-microphone",
+   "gnome-sound-recorder",
+   "kwave"
+  ]
+ },
+ "disks": {
+  "name": "Disques",
+  "category": "système",
+  "alias": [
+   "drive-harddisk",
+   "gnome-disks",
+   "partitionmanager",
+   "media-removable"
+  ]
+ },
+ "printer": {
+  "name": "Imprimantes",
+  "category": "système",
+  "alias": [
+   "preferences-desktop-printer",
+   "system-config-printer"
+  ]
+ },
+ "bluetooth": {
+  "name": "Bluetooth",
+  "category": "système",
+  "alias": [
+   "preferences-system-bluetooth",
+   "blueman"
+  ]
+ },
+ "display": {
+  "name": "Affichage",
+  "category": "système",
+  "alias": [
+   "preferences-desktop-display",
+   "video-display",
+   "preferences-system-display"
+  ]
+ },
+ "keyboard": {
+  "name": "Clavier",
+  "category": "système",
+  "alias": [
+   "input-keyboard",
+   "preferences-desktop-keyboard",
+   "kbd"
+  ]
+ },
+ "language": {
+  "name": "Langue et région",
+  "category": "système",
+  "alias": [
+   "preferences-desktop-locale",
+   "preferences-desktop-language",
+   "system-config-language"
+  ]
+ },
+ "accounts": {
+  "name": "Comptes",
+  "category": "système",
+  "alias": [
+   "system-users",
+   "preferences-desktop-user",
+   "user-info",
+   "users"
+  ]
+ },
+ "accessibility": {
+  "name": "Accessibilité",
+  "category": "système",
+  "alias": [
+   "preferences-desktop-accessibility",
+   "accessibility-directory",
+   "universal-access"
+  ]
+ },
+ "privacy": {
+  "name": "Confidentialité",
+  "category": "système",
+  "alias": [
+   "security-low",
+   "view-private"
+  ]
+ },
+ "archive": {
+  "name": "Archives",
+  "category": "accessoires",
+  "alias": [
+   "package-x-generic",
+   "file-roller",
+   "ark",
+   "application-x-archive"
+  ]
+ },
+ "pdf-viewer": {
+  "name": "Lecteur de documents",
+  "category": "bureautique",
+  "alias": [
+   "evince",
+   "okular",
+   "org.gnome.Evince"
+  ]
+ },
+ "backup": {
+  "name": "Sauvegarde",
+  "category": "système",
+  "alias": [
+   "drive-backup",
+   "deja-dup",
+   "timeshift",
+   "backups"
+  ]
+ },
+ "maps": {
+  "name": "Cartes",
+  "category": "internet",
+  "alias": [
+   "gnome-maps",
+   "marble"
+  ]
+ },
+ "devtools": {
+  "name": "Outils de développement",
+  "category": "développement",
+  "alias": [
+   "applications-development",
+   "utilities-development",
+   "devhelp"
+  ]
+ },
+ "personalization": {
+  "name": "Personnalisation",
+  "category": "système",
+  "alias": [
+   "preferences-desktop-theme",
+   "preferences-desktop-wallpaper",
+   "preferences-desktop-color"
+  ]
+ },
+ "search": {
+  "name": "Recherche",
+  "category": "système",
+  "alias": [
+   "system-search",
+   "edit-find",
+   "krunner"
+  ]
+ },
+ "camera": {
+  "name": "Appareil photo",
+  "category": "multimédia",
+  "alias": [
+   "camera-photo",
+   "cheese",
+   "org.gnome.Cheese",
+   "camera-web"
+  ]
+ },
+ "personal-assistant": {
+  "name": "Assistant",
+  "category": "système",
+  "alias": [
+   "help-hint",
+   "assistant",
+   "system-help"
+  ]
+ },
+ "folder": {
+  "name": "Dossier",
+  "category": "dossiers",
+  "alias": [
+   "folder-default",
+   "inode-directory",
+   "folder-blue"
+  ]
+ },
+ "folder-documents": {
+  "name": "Documents",
+  "category": "dossiers",
+  "alias": []
+ },
+ "folder-pictures": {
+  "name": "Images",
+  "category": "dossiers",
+  "alias": [
+   "folder-image"
+  ]
+ },
+ "folder-music": {
+  "name": "Musique",
+  "category": "dossiers",
+  "alias": [
+   "folder-sound"
+  ]
+ },
+ "folder-videos": {
+  "name": "Vidéos",
+  "category": "dossiers",
+  "alias": [
+   "folder-video"
+  ]
+ },
+ "folder-downloads": {
+  "name": "Téléchargements",
+  "category": "dossiers",
+  "alias": [
+   "folder-download"
+  ]
+ },
+ "folder-desktop": {
+  "name": "Bureau",
+  "category": "dossiers",
+  "alias": [
+   "user-desktop"
+  ]
+ },
+ "folder-home": {
+  "name": "Dossier personnel",
+  "category": "dossiers",
+  "alias": [
+   "user-home"
+  ]
+ },
+ "file-text": {
+  "name": "Texte",
+  "category": "types de fichiers",
+  "alias": [
+   "text-x-generic",
+   "text-plain",
+   "text-x-generic-template"
+  ]
+ },
+ "file-doc": {
+  "name": "Document",
+  "category": "types de fichiers",
+  "alias": [
+   "x-office-document",
+   "application-msword",
+   "application-vnd.oasis.opendocument.text"
+  ]
+ },
+ "file-sheet": {
+  "name": "Feuille de calcul",
+  "category": "types de fichiers",
+  "alias": [
+   "x-office-spreadsheet",
+   "application-vnd.ms-excel",
+   "application-vnd.oasis.opendocument.spreadsheet"
+  ]
+ },
+ "file-slides": {
+  "name": "Présentation",
+  "category": "types de fichiers",
+  "alias": [
+   "x-office-presentation",
+   "application-vnd.ms-powerpoint"
+  ]
+ },
+ "file-pdf": {
+  "name": "PDF",
+  "category": "types de fichiers",
+  "alias": [
+   "application-pdf",
+   "application-x-pdf"
+  ]
+ },
+ "file-image": {
+  "name": "Image",
+  "category": "types de fichiers",
+  "alias": [
+   "image-png",
+   "image-jpeg"
+  ]
+ },
+ "file-audio": {
+  "name": "Audio",
+  "category": "types de fichiers",
+  "alias": [
+   "audio-mpeg",
+   "audio-x-wav"
+  ]
+ },
+ "file-video": {
+  "name": "Vidéo",
+  "category": "types de fichiers",
+  "alias": [
+   "video-mp4",
+   "video-x-matroska"
+  ]
+ },
+ "file-archive": {
+  "name": "Archive",
+  "category": "types de fichiers",
+  "alias": [
+   "application-zip",
+   "application-x-compressed-tar"
+  ]
+ },
+ "file-code": {
+  "name": "Code source",
+  "category": "types de fichiers",
+  "alias": [
+   "text-x-script",
+   "text-x-source",
+   "text-x-csrc",
+   "text-x-python",
+   "application-x-executable"
+  ]
+ },
+ "file-unknown": {
+  "name": "Fichier",
+  "category": "types de fichiers",
+  "alias": [
+   "unknown",
+   "application-octet-stream"
+  ]
+ },
+ "browser": {
+  "name": "Navigateur web",
+  "category": "internet",
+  "alias": [
+   "web-browser-generic"
+  ]
+ },
+ "chat": {
+  "name": "Messagerie instantanée",
+  "category": "internet",
+  "alias": [
+   "empathy",
+   "pidgin",
+   "telegram"
+  ]
+ },
+ "video-call": {
+  "name": "Visioconférence",
+  "category": "internet",
+  "alias": []
+ },
+ "rss": {
+  "name": "Flux d'actualités",
+  "category": "internet",
+  "alias": [
+   "feed-reader",
+   "news-reader"
+  ]
+ },
+ "torrent": {
+  "name": "Téléchargements partagés",
+  "category": "internet",
+  "alias": [
+   "transmission",
+   "qbittorrent",
+   "deluge"
+  ]
+ },
+ "cloud": {
+  "name": "Synchronisation cloud",
+  "category": "internet",
+  "alias": [
+   "cloud-storage",
+   "sync",
+   "nextcloud",
+   "syncthing"
+  ]
+ },
+ "remote": {
+  "name": "Connexion à distance",
+  "category": "internet",
+  "alias": [
+   "remote-desktop",
+   "vnc",
+   "rdp",
+   "ssh-client"
+  ]
+ },
+ "vpn": {
+  "name": "Réseau privé virtuel",
+  "category": "internet",
+  "alias": [
+   "openvpn",
+   "wireguard"
+  ]
+ },
+ "network-tools": {
+  "name": "Analyseur réseau",
+  "category": "internet",
+  "alias": [
+   "wireshark",
+   "nmap"
+  ]
+ },
+ "writer": {
+  "name": "Traitement de texte",
+  "category": "bureautique",
+  "alias": [
+   "libreoffice-writer",
+   "abiword",
+   "word-processor"
+  ]
+ },
+ "spreadsheet": {
+  "name": "Tableur",
+  "category": "bureautique",
+  "alias": [
+   "libreoffice-calc",
+   "gnumeric",
+   "localc"
+  ]
+ },
+ "presentation": {
+  "name": "Présentation",
+  "category": "bureautique",
+  "alias": [
+   "libreoffice-impress",
+   "loimpress"
+  ]
+ },
+ "ebook": {
+  "name": "Livres numériques",
+  "category": "bureautique",
+  "alias": [
+   "calibre",
+   "foliate",
+   "ebook-reader"
+  ]
+ },
+ "office-suite": {
+  "name": "Suite bureautique",
+  "category": "bureautique",
+  "alias": [
+   "libreoffice",
+   "onlyoffice",
+   "office"
+  ]
+ },
+ "database": {
+  "name": "Bases de données",
+  "category": "bureautique",
+  "alias": [
+   "sqlite",
+   "pgadmin",
+   "dbeaver",
+   "mysql-workbench"
+  ]
+ },
+ "translator": {
+  "name": "Traduction",
+  "category": "bureautique",
+  "alias": [
+   "translate",
+   "dictionary",
+   "goldendict"
+  ]
+ },
+ "finance": {
+  "name": "Finances",
+  "category": "bureautique",
+  "alias": [
+   "gnucash",
+   "homebank",
+   "money"
+  ]
+ },
+ "tasks": {
+  "name": "Tâches",
+  "category": "bureautique",
+  "alias": [
+   "todo",
+   "planner",
+   "endeavour"
+  ]
+ },
+ "education": {
+  "name": "Apprentissage",
+  "category": "bureautique",
+  "alias": [
+   "anki",
+   "khan",
+   "gcompris"
+  ]
+ },
+ "science": {
+  "name": "Sciences et calcul",
+  "category": "bureautique",
+  "alias": [
+   "kalzium",
+   "stellarium",
+   "octave",
+   "scilab",
+   "jupyter"
+  ]
+ },
+ "graph": {
+  "name": "Graphiques et mathématiques",
+  "category": "bureautique",
+  "alias": [
+   "geogebra",
+   "kmplot",
+   "plot"
+  ]
+ },
+ "code-editor": {
+  "name": "Éditeur de code",
+  "category": "développement",
+  "alias": [
+   "vscode",
+   "code",
+   "sublime-text",
+   "atom",
+   "gedit-code"
+  ]
+ },
+ "ide": {
+  "name": "Environnement de développement",
+  "category": "développement",
+  "alias": [
+   "jetbrains",
+   "eclipse",
+   "qtcreator",
+   "kdevelop",
+   "android-studio"
+  ]
+ },
+ "terminal-editor": {
+  "name": "Éditeur en terminal",
+  "category": "développement",
+  "alias": [
+   "vim",
+   "neovim",
+   "emacs",
+   "nano",
+   "helix"
+  ]
+ },
+ "git": {
+  "name": "Gestion de versions",
+  "category": "développement",
+  "alias": [
+   "git-gui",
+   "gitk",
+   "gitg",
+   "github-desktop",
+   "lazygit",
+   "meld"
+  ]
+ },
+ "containers": {
+  "name": "Conteneurs",
+  "category": "développement",
+  "alias": [
+   "docker",
+   "podman",
+   "lxc",
+   "kubernetes"
+  ]
+ },
+ "virtual-machine": {
+  "name": "Machines virtuelles",
+  "category": "développement",
+  "alias": [
+   "virtualbox",
+   "qemu",
+   "virt-manager",
+   "vmware",
+   "gnome-boxes"
+  ]
+ },
+ "debugger": {
+  "name": "Débogueur",
+  "category": "développement",
+  "alias": [
+   "gdb",
+   "valgrind",
+   "lldb"
+  ]
+ },
+ "api-tools": {
+  "name": "Outils d'API",
+  "category": "développement",
+  "alias": [
+   "postman",
+   "insomnia",
+   "curl"
+  ]
+ },
+ "photo-editor": {
+  "name": "Retouche photo",
+  "category": "création",
+  "alias": [
+   "gimp",
+   "krita",
+   "photoshop",
+   "darktable",
+   "rawtherapee",
+   "pinta"
+  ]
+ },
+ "paint": {
+  "name": "Dessin",
+  "category": "création",
+  "alias": [
+   "mypaint",
+   "kolourpaint",
+   "drawing",
+   "tux-paint"
+  ]
+ },
+ "vector": {
+  "name": "Dessin vectoriel",
+  "category": "création",
+  "alias": [
+   "inkscape",
+   "illustrator",
+   "figma",
+   "sodipodi",
+   "boxy-svg"
+  ]
+ },
+ "3d": {
+  "name": "Modélisation 3D",
+  "category": "création",
+  "alias": [
+   "blender",
+   "freecad",
+   "openscad",
+   "meshlab",
+   "cad"
+  ]
+ },
+ "video-editor": {
+  "name": "Montage vidéo",
+  "category": "création",
+  "alias": [
+   "kdenlive",
+   "openshot",
+   "shotcut",
+   "davinci",
+   "pitivi",
+   "olive"
+  ]
+ },
+ "audio-editor": {
+  "name": "Édition audio",
+  "category": "création",
+  "alias": [
+   "audacity",
+   "ardour",
+   "lmms",
+   "reaper",
+   "tenacity"
+  ]
+ },
+ "screen-recorder": {
+  "name": "Enregistrement d'écran",
+  "category": "création",
+  "alias": [
+   "obs",
+   "simplescreenrecorder",
+   "kazam",
+   "peek",
+   "vokoscreen"
+  ]
+ },
+ "font-manager": {
+  "name": "Polices",
+  "category": "création",
+  "alias": [
+   "fontforge",
+   "font-viewer",
+   "gucharmap",
+   "fonts"
+  ]
+ },
+ "color-picker": {
+  "name": "Pipette et couleurs",
+  "category": "création",
+  "alias": [
+   "gcolor",
+   "color-selector",
+   "palette"
+  ]
+ },
+ "scanner": {
+  "name": "Numériseur",
+  "category": "création",
+  "alias": [
+   "simple-scan",
+   "xsane",
+   "skanlite"
+  ]
+ },
+ "video-player": {
+  "name": "Lecteur vidéo",
+  "category": "multimédia",
+  "alias": [
+   "vlc",
+   "mpv",
+   "celluloid",
+   "smplayer",
+   "totem-player",
+   "mplayer"
+  ]
+ },
+ "music-player": {
+  "name": "Lecteur de musique",
+  "category": "multimédia",
+  "alias": [
+   "spotify-client",
+   "clementine",
+   "amarok",
+   "lollypop",
+   "deadbeef",
+   "audacious",
+   "strawberry"
+  ]
+ },
+ "streaming": {
+  "name": "Vidéo en ligne",
+  "category": "multimédia",
+  "alias": [
+   "youtube",
+   "netflix",
+   "twitch",
+   "streaming-service"
+  ]
+ },
+ "radio": {
+  "name": "Radio et podcasts",
+  "category": "multimédia",
+  "alias": [
+   "gpodder",
+   "radio-player",
+   "podcasts",
+   "shortwave"
+  ]
+ },
+ "game": {
+  "name": "Jeux",
+  "category": "jeux",
+  "alias": [
+   "steam",
+   "lutris",
+   "heroic",
+   "gamemode",
+   "supertuxkart",
+   "minetest",
+   "games"
+  ]
+ },
+ "game-launcher": {
+  "name": "Bibliothèque de jeux",
+  "category": "jeux",
+  "alias": [
+   "game-library",
+   "itch",
+   "gog-galaxy"
+  ]
+ },
+ "passwords": {
+  "name": "Mots de passe",
+  "category": "sécurité",
+  "alias": [
+   "keepassxc",
+   "bitwarden",
+   "seahorse",
+   "gnome-keyring",
+   "lastpass"
+  ]
+ },
+ "antivirus": {
+  "name": "Antivirus",
+  "category": "sécurité",
+  "alias": [
+   "clamtk",
+   "clamav",
+   "rkhunter"
+  ]
+ },
+ "firewall": {
+  "name": "Pare-feu",
+  "category": "sécurité",
+  "alias": [
+   "ufw",
+   "firewalld",
+   "iptables"
+  ]
+ },
+ "cleaner": {
+  "name": "Nettoyage",
+  "category": "système",
+  "alias": [
+   "bleachbit",
+   "stacer",
+   "sweeper"
+  ]
+ },
+ "disk-usage": {
+  "name": "Occupation du disque",
+  "category": "système",
+  "alias": [
+   "baobab",
+   "filelight",
+   "ncdu",
+   "qdirstat",
+   "gdmap"
+  ]
+ },
+ "process-manager": {
+  "name": "Gestionnaire de processus",
+  "category": "système",
+  "alias": [
+   "htop",
+   "btop",
+   "top",
+   "gnome-system-monitor-gtk"
+  ]
+ },
+ "hardware-info": {
+  "name": "Informations matérielles",
+  "category": "système",
+  "alias": [
+   "hardinfo",
+   "cpu-z",
+   "lshw",
+   "inxi",
+   "neofetch"
+  ]
+ },
+ "system-tweaks": {
+  "name": "Réglages avancés",
+  "category": "système",
+  "alias": [
+   "dconf-editor",
+   "gnome-tweaks",
+   "tweaks",
+   "regedit"
+  ]
+ },
+ "ai-assistant": {
+  "name": "Assistant IA",
+  "category": "système",
+  "alias": [
+   "copilot",
+   "chatgpt",
+   "claude",
+   "gemini",
+   "ollama",
+   "llm"
+  ]
+ },
+ "contacts-card": {
+  "name": "Carnet d'adresses",
+  "category": "bureautique",
+  "alias": [
+   "address-book",
+   "thunderbird-contacts"
+  ]
+ },
+ "mail-client": {
+  "name": "Client de messagerie",
+  "category": "internet",
+  "alias": [
+   "thunderbird",
+   "geary",
+   "evolution-mail",
+   "mutt",
+   "outlook"
+  ]
+ },
+ "app-generic": {
+  "name": "Application",
+  "category": "système",
+  "alias": [
+   "application-default-icon",
+   "unknown-app"
+  ]
+ }
+}

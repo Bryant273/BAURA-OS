@@ -15,7 +15,7 @@ The current interfaces are scaffolding, not a complete PnP or driver stack:
 | --- | --- |
 | PC serial console | A 16550-compatible COM1 driver is integrated in the existing 32-bit Multiboot kernel using direct ring-0 port I/O; intended for QEMU/compatible legacy PC boot, not seL4 |
 | PCI inventory parsing | Implemented against an injected configuration-space reader; host fixture only |
-| PCI hardware access | No real backend; the older `pci_scanner.c` is not in the build and is not a seL4 adapter |
+| PCI hardware access | A seL4 x86 I/O-port backend is implemented under `BOOT/SEL4`; the initial task requests authority for ports `0xCF8–0xCFF`, installs the backend, and invokes Core enumeration. Successful target build and boot still need verification |
 | Device classification | Broad PCI class/subclass groups only |
 | Driver matching | Exact PCI vendor/device ID registration plus legacy broad type matching |
 | Driver execution | In-process C probe callback; no driver image loading, isolation, task lifecycle, or resource delegation |
@@ -37,12 +37,17 @@ authorization, stable device identity, hotplug semantics, returned metadata,
 and errors. Do not expose raw physical addresses, kernel capability slots, or
 the current callback structures as an application ABI.
 
-For the x86_64 seL4 target, a platform adapter must obtain device configuration
-and resource authority through the selected boot/capability setup, validate
-that authority, and expose a narrow backend to Core. Core policy must not do
-port I/O, map BARs, assign IRQs, or mint seL4 capabilities itself. The current
-Makefile builds the seL4 kernel and Core archive separately; there is no such
-adapter in the integrated boot path.
+For the x86_64 seL4 target, `BOOT/SEL4/pci_backend_sel4.c` requests an I/O-port
+capability from the initial task's `seL4_CapIOPortControl`, then connects
+port-based PCI configuration access to the portable Core reader. The initial
+task calls this adapter before refreshing the hardware inventory. This is a
+configuration-space enumeration backend only: it does not authorize or map
+BAR resources, assign device IRQs, or load isolated drivers. The target build
+and actual boot path still require verification.
+
+The former `pci_scanner.c` and `pci_scanner_enhanced.c` ring-0 prototypes were
+removed. Their direct port-I/O and simulated ACPI paths were not suitable for
+the selected seL4 architecture.
 
 The other files under `KERNEL/L4` that contain custom x86_64 paging, interrupt,
 or syscall fragments are not wired into the configured seL4 build and are not

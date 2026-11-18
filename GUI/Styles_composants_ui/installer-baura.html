@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Installation de BAURA OS</title>
+<link rel="icon" href="icones/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="baura-theme.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;color:var(--fg);overflow:hidden;-webkit-font-smoothing:antialiased;background:transparent;display:grid;place-items:center}
+  button,input,select{font:inherit;color:inherit}
+  .win{width:min(1200px,calc(100vw - 28px));height:min(790px,calc(100vh - 28px));display:grid;grid-template-columns:350px 1fr;border-radius:34px;overflow:hidden;
+    background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(var(--blur)) saturate(var(--sat));-webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+    box-shadow:var(--shadow),0 40px 100px rgba(40,25,120,.28);animation:rise .9s var(--ease-out) both}
+  @keyframes rise{from{opacity:0;transform:translateY(24px) scale(.97)}}
+
+  /* --- panneau « ton appareil » : se remplit au fil des choix --- */
+  .dev{position:relative;padding:30px 26px 24px;display:flex;flex-direction:column;gap:20px;min-height:0;overflow:hidden;
+    background:linear-gradient(170deg,color-mix(in srgb,var(--a1) 22%,transparent),color-mix(in srgb,var(--a2) 8%,transparent) 55%,transparent),var(--glass-strong);border-right:1px solid var(--hair)}
+  .dev::before{content:"";position:absolute;width:340px;height:340px;border-radius:50%;left:-120px;bottom:-140px;background:radial-gradient(closest-side,color-mix(in srgb,var(--a2) 35%,transparent),transparent);pointer-events:none}
+  .sym{display:flex;align-items:center;gap:16px}
+  .sym svg{height:92px;flex:none;overflow:visible}
+  .sym .s{transition:opacity .7s var(--ease-out),transform .7s var(--spring),filter .7s;opacity:.16;transform-origin:center;transform-box:fill-box}
+  .sym .s.on{opacity:1;filter:drop-shadow(0 0 10px color-mix(in srgb,currentColor 55%,transparent))}
+  .sym .s4.on{animation:glint 2.8s ease-in-out infinite}@keyframes glint{50%{transform:scale(1.25)}}
+  .sym b{font-size:21px;letter-spacing:.16em;display:block}.sym small{color:var(--mut);font-size:12.5px;line-height:1.4;display:block;margin-top:2px}
+  .card{position:relative;z-index:1;flex:1;min-height:0;overflow:auto;border-radius:22px;background:var(--field);border:1px solid var(--hair);padding:6px 4px}
+  .card h5{margin:12px 16px 4px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:700}
+  .kv{display:flex;align-items:center;gap:12px;padding:10px 16px;font-size:13.5px;border-radius:14px}
+  .kv i{font-style:normal;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--hover);flex:none;font-size:15px}
+  .kv span{color:var(--mut);font-size:11.5px;display:block}.kv b{display:block;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .kv.todo b{color:var(--mut);font-weight:500}.kv.pop{animation:kv .6s var(--spring)}@keyframes kv{from{background:color-mix(in srgb,var(--a2) 30%,transparent);transform:scale(.97)}}
+  .mini{margin:6px 16px 12px;display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:var(--hair)}.mini i{display:block;min-width:4px}
+  .dev small.fine{position:relative;z-index:1;color:var(--mut);font-size:11.5px;line-height:1.5}
+
+  /* --- zone principale --- */
+  .main{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .top{padding:26px 44px 0;flex:none}
+  .trk{display:flex;gap:6px;align-items:center}
+  .trk i{flex:1;height:6px;border-radius:6px;background:var(--hair);position:relative;overflow:hidden;cursor:default;transition:background .3s}
+  .trk i.done{background:linear-gradient(90deg,var(--a1),var(--a2));cursor:pointer}.trk i.on{background:var(--a2)}
+  .trk i.on::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:slide 1.8s linear infinite}@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+  .crumb{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;font-size:12.5px;color:var(--mut);letter-spacing:.04em}
+  .crumb b{color:var(--fg);letter-spacing:0;font-size:13px}
+  .scroll{flex:1;min-height:0;overflow:auto;padding:14px 44px 22px;scrollbar-gutter:stable;scroll-behavior:smooth}
+  .scroll::-webkit-scrollbar{width:10px}.scroll::-webkit-scrollbar-thumb{background:var(--press);border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+  .pane{display:none}.pane.on{display:block;animation:in .45s var(--ease-out) both}
+  @keyframes in{from{opacity:0;transform:translateX(18px)}}
+  h1{margin:6px 0 6px;font-size:30px;letter-spacing:-.025em}.lead{margin:0 0 22px;color:var(--mut);font-size:15px;line-height:1.55;max-width:680px}
+  h3{margin:22px 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+  .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 44px 22px;border-top:1px solid var(--hair);flex:none;background:var(--glass-strong)}
+  .foot .hint{font-size:12.5px;color:var(--mut);flex:1;padding:0 14px;text-align:center}
+  .btn{height:46px;padding:0 28px;border-radius:23px;border:0;cursor:pointer;font-weight:600;font-size:14.5px;transition:transform .15s var(--spring),filter .15s,opacity .2s}
+  .btn.pri{background:linear-gradient(145deg,var(--a2),var(--a1));color:#fff;box-shadow:0 8px 20px color-mix(in srgb,var(--a1) 40%,transparent),inset 0 1px 0 rgba(255,255,255,.4)}
+  .btn.gh{background:var(--hover)}.btn:hover{filter:brightness(1.08)}.btn:active{transform:scale(.96)}.btn:disabled{opacity:.4;pointer-events:none}
+  .btn:focus-visible,.opt:focus-visible,.tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* accueil */
+  .hero{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:8px}
+  .feat{padding:20px;border-radius:22px;background:var(--field);border:1px solid var(--hair)}
+  .feat i{font-style:normal;font-size:26px;display:block;margin-bottom:10px}.feat b{display:block;margin-bottom:4px}.feat span{color:var(--mut);font-size:13px;line-height:1.5}
+  .big-hello{font-size:44px;line-height:1.08;letter-spacing:-.035em;margin:10px 0 14px;background:linear-gradient(120deg,var(--fg),var(--a2) 60%,var(--a1));-webkit-background-clip:text;background-clip:text;color:transparent}
+  /* options */
+  .opts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.opts.one{grid-template-columns:1fr}
+  .opt,.tile{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:18px;border:1.5px solid var(--hair);background:var(--field);cursor:pointer;text-align:left;transition:border-color .2s,background .2s,transform .15s}
+  .opt:hover,.tile:hover{background:var(--hover)}.opt.on,.tile.on{border-color:var(--a2);background:var(--press)}
+  .opt .rd{width:20px;height:20px;border-radius:50%;border:2px solid var(--mut);flex:none;display:grid;place-items:center;margin-left:auto}.opt.on .rd{border-color:var(--a2)}.opt.on .rd::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--a2)}
+  .opt b{display:block;font-size:15px}.opt small{color:var(--mut);font-size:13px;line-height:1.4}.opt .fl{font-size:24px;width:32px;text-align:center;flex:none}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--hover)}
+  .chip.ok{background:rgba(52,211,153,.18);color:var(--ok)}.chip.bad{background:rgba(248,113,113,.18);color:var(--err)}
+  /* infos */
+  .specs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .spec{padding:16px 18px;border-radius:20px;background:var(--field);border:1px solid var(--hair)}
+  .spec span{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:6px}.spec b{font-size:15.5px;display:block;word-break:break-word;line-height:1.35}.spec .chip{margin-top:10px}
+  .fld{display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--mut)}
+  input[type=text],input[type=search],select{height:46px;border-radius:14px;border:1px solid var(--field-line);background:var(--field);padding:0 16px;font-size:15px;color:var(--fg);outline:none;min-width:0}
+  select option{color:#111}
+  input[type=text]:focus,input[type=search]:focus,select:focus{border-color:var(--a2);box-shadow:0 0 0 3px color-mix(in srgb,var(--a2) 28%,transparent)}
+  /* clavier */
+  .kb{padding:18px;border-radius:24px;background:var(--field);border:1px solid var(--hair);margin:6px 0 14px;display:flex;flex-direction:column;gap:7px;align-items:center;overflow:auto}
+  .kr{display:flex;gap:7px}.key{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;font-size:15px;font-weight:600;text-transform:uppercase;background:var(--hover);border:1px solid var(--hair);box-shadow:0 2px 0 var(--hair);transition:transform .08s,background .1s}
+  .key.hit{background:linear-gradient(145deg,var(--a2),var(--a1));color:#fff;transform:translateY(2px);box-shadow:none}
+  .key.space{width:300px}
+  /* lieu */
+  .clock{display:flex;align-items:center;gap:22px;padding:20px 24px;border-radius:24px;background:var(--field);border:1px solid var(--hair);margin-bottom:14px}
+  .clock .t{font-size:46px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}.clock small{display:block;color:var(--mut);font-size:13.5px;margin-top:6px}
+  .tzs{max-height:250px;overflow:auto;border-radius:18px;border:1px solid var(--hair);background:var(--field);margin-top:10px}
+  .tz{display:flex;justify-content:space-between;gap:12px;padding:11px 18px;font-size:14px;cursor:pointer;border:0;background:none;width:100%;text-align:left}
+  .tz:hover{background:var(--hover)}.tz.on{background:var(--press);font-weight:600}.tz span{color:var(--mut);font-variant-numeric:tabular-nums}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .sw{display:inline-flex;border-radius:14px;background:var(--hover);padding:3px}.sw button{border:0;background:none;padding:9px 16px;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--mut)}.sw button.on{background:var(--glass-strong);color:var(--fg);box-shadow:0 1px 5px rgba(0,0,0,.18)}
+  /* disque */
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mode{padding:18px 20px;border-radius:22px;border:1.5px solid var(--hair);background:var(--field);cursor:pointer;text-align:left;transition:.2s}
+  .mode.on{border-color:var(--a2);background:var(--press)}.mode:hover{background:var(--hover)}.mode.on:hover{background:var(--press)}
+  .mode b{display:flex;align-items:center;gap:8px;font-size:16px;margin-bottom:6px}.mode small{color:var(--mut);font-size:13px;line-height:1.5;display:block}
+  .pbar{display:flex;height:56px;border-radius:16px;overflow:hidden;margin:6px 0 10px;background:var(--hair);gap:3px}
+  .pbar i{display:flex;align-items:flex-end;padding:0 0 6px 10px;font-style:normal;font-size:12px;font-weight:700;color:#fff;transition:flex-grow .35s var(--ease-out);min-width:8px;overflow:hidden;white-space:nowrap}
+  table.pt{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}.pt th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);text-align:left;padding:8px 10px;font-weight:600}
+  .pt td{padding:11px 10px;border-top:1px solid var(--hair)}.pt td:last-child,.pt th:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .ltr{display:inline-grid;place-items:center;min-width:34px;height:26px;padding:0 8px;border-radius:9px;font-weight:700;font-size:12.5px;color:#fff}
+  .sl{display:grid;grid-template-columns:200px 1fr 80px;align-items:center;gap:14px;margin:12px 0;font-size:14px}.sl b{text-align:right;font-variant-numeric:tabular-nums}
+  input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;outline:none;cursor:pointer;background:linear-gradient(90deg,var(--a1),var(--a2)) 0/var(--p,50%) 100% no-repeat,var(--hair)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.35)}
+  .warn{display:flex;gap:10px;align-items:flex-start;padding:13px 16px;margin-top:14px;border-radius:16px;background:rgba(245,158,11,.14);font-size:13.5px;line-height:1.5}
+  .warn.info{background:color-mix(in srgb,var(--a2) 14%,transparent)}
+  .tgl{display:flex;align-items:center;gap:12px;font-size:14px;cursor:pointer;margin-top:6px}
+  .tgl input{appearance:none;width:44px;height:26px;border-radius:13px;background:var(--hair);position:relative;cursor:pointer;margin:0;transition:background .2s}
+  .tgl input::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .25s var(--spring)}
+  .tgl input:checked{background:linear-gradient(145deg,var(--a2),var(--a1))}.tgl input:checked::after{transform:translateX(18px)}
+  /* licence */
+  .lic{height:330px;overflow:auto;padding:18px 22px;border-radius:18px;background:var(--field);border:1px solid var(--hair);font-size:13.5px;line-height:1.7;color:var(--mut)}
+  .lic h4{margin:0 0 4px;color:var(--fg);font-size:14px}.lic p{margin:0 0 14px}
+  .chk{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:14px;cursor:pointer;user-select:none}.chk.dis{opacity:.45;pointer-events:none}
+  .chk input{appearance:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--mut);display:grid;place-items:center;cursor:pointer;margin:0;transition:background .2s,border-color .2s}
+  .chk input:checked{background:linear-gradient(145deg,var(--a2),var(--a1));border-color:transparent}
+  .chk input:checked::after{content:"";width:5px;height:10px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+  .rd2{height:6px;border-radius:6px;background:var(--hair);margin-top:10px;overflow:hidden}.rd2 i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a1),var(--a2));transition:width .2s}
+  /* récap */
+  .recap{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .rc{padding:16px 18px;border-radius:20px;background:var(--field);border:1px solid var(--hair);display:flex;gap:14px;align-items:center}
+  .rc i{font-style:normal;font-size:22px;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--hover);flex:none}
+  .rc span{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);display:block}.rc b{display:block;font-size:15px;margin-top:2px}.rc small{color:var(--mut);font-size:12.5px;display:block;margin-top:2px}
+  .rc button{margin-left:auto;border:0;background:var(--hover);border-radius:11px;padding:7px 13px;cursor:pointer;font-size:12.5px;font-weight:600}.rc button:hover{background:var(--press)}
+  .rc.wide{grid-column:1/-1}
+  /* installation */
+  .prog{display:flex;flex-direction:column;gap:18px;padding-top:6px}
+  .big{height:14px;border-radius:14px;background:var(--hair);overflow:hidden}.big i{display:block;height:100%;width:0;border-radius:14px;background:linear-gradient(90deg,var(--a1),var(--a2),var(--a1));background-size:200% 100%;animation:sh 1.6s linear infinite;transition:width .4s}
+  @keyframes sh{to{background-position:-200% 0}}
+  .pl{display:flex;justify-content:space-between;font-size:15px}.pl b{font-variant-numeric:tabular-nums}
+  .ph{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.ph div{padding:12px 14px;border-radius:16px;background:var(--field);border:1px solid var(--hair);font-size:13px;color:var(--mut);transition:.3s}.ph div.on{color:var(--fg);border-color:var(--a2);background:var(--press)}.ph div.done{color:var(--fg)}.ph div.done::before{content:"✓ ";color:var(--ok);font-weight:700}
+  .log{height:200px;overflow:hidden;border-radius:18px;background:rgba(10,7,32,.8);color:#cfc9ff;font:12.5px/1.75 "JetBrains Mono",Menlo,Consolas,monospace;padding:14px 18px;display:flex;flex-direction:column;justify-content:flex-end}
+  .log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.7}.log div:last-child{opacity:1;color:#fff}.log em{font-style:normal;color:#8be9b3}
+  .tip{color:var(--mut);font-size:13.5px;min-height:22px}
+  .okc{width:96px;height:96px;border-radius:50%;margin:30px 0 22px;display:grid;place-items:center;background:linear-gradient(145deg,#34D399,#047857);box-shadow:0 14px 34px rgba(4,120,87,.4);animation:pop .7s var(--spring)}
+  .okc svg{width:48px;height:48px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}@keyframes pop{from{transform:scale(.3);opacity:0}}
+  @media (max-width:900px){.win{grid-template-columns:1fr}.dev{display:none}.top,.scroll,.foot{padding-left:22px;padding-right:22px}.hero,.specs{grid-template-columns:1fr}.opts,.modes,.recap{grid-template-columns:1fr}.sl{grid-template-columns:1fr 70px}.sl span{grid-column:1/-1}.key{width:30px;height:34px}}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="win" role="application" aria-label="Installation de BAURA OS">
+  <aside class="dev" aria-label="Ton appareil">
+    <div class="sym">
+      <svg viewBox="150 29 199 420" aria-hidden="true">
+        <rect class="s s1" x="150" y="29" width="48" height="420" rx="24" fill="var(--b1)" style="color:var(--b1)"/>
+        <path class="s s2" d="M248 29A101 102.5 0 0 1 248 234Z" fill="var(--b2)" style="color:var(--b2)"/>
+        <path class="s s3" d="M248 245A101 102 0 0 1 248 449Z" fill="var(--b3)" style="color:var(--b3)"/>
+        <rect class="s s4" x="316" y="221" width="33" height="36" rx="15" fill="var(--b4)" style="color:var(--b4)"/>
+      </svg>
+      <div><b>BAURA</b><small id="symt">Chaque choix allume<br>une forme du symbole.</small></div>
+    </div>
+    <div class="card" id="card"></div>
+    <small class="fine">Disque virtuel : aucune donnée réelle de ton ordinateur n'est touchée.</small>
+  </aside>
+  <main class="main">
+    <div class="top"><div class="trk" id="trk" role="list"></div><div class="crumb"><span id="cnt"></span><b id="cname"></b></div></div>
+    <div class="scroll" id="scroll">
+
+      <section class="pane on" data-s="0">
+        <div class="big-hello">Bienvenue.<br>Installons BAURA OS.</div>
+        <p class="lead">En quelques étapes, on prépare ton appareil : on regarde ce qu'il a dans le ventre, on règle la langue, le clavier, l'heure, puis on choisit où vivra le système.</p>
+        <div class="hero">
+          <div class="feat"><i>🔎</i><b>On analyse ton appareil</b><span>Processeur, mémoire, écran : on vérifie que tout est prêt avant d'écrire quoi que ce soit.</span></div>
+          <div class="feat"><i>🧭</i><b>Tu gardes la main</b><span>Disque entier, ou partitionnement manuel pour garder ton autre système en double démarrage.</span></div>
+          <div class="feat"><i>🛡️</i><b>Rien n'est touché pour de vrai</b><span>L'installation se fait sur un disque virtuel, dans ton navigateur. Tu peux recommencer à volonté.</span></div>
+        </div>
+      </section>
+
+      <section class="pane" data-s="1">
+        <h1>Ton appareil</h1><p class="lead">Voilà ce que BAURA OS détecte. Tu peux donner un nom à cet appareil.</p>
+        <div class="specs" id="specs"></div>
+        <h3>Système</h3>
+        <div class="specs"><div class="spec"><span>Système à installer</span><b>BAURA OS 0.4</b><i class="chip" style="margin-top:10px;font-style:normal">Prototype web</i></div>
+          <div class="spec"><span>Compatibilité</span><b id="compat">—</b></div>
+          <div class="spec"><span>Nom de l'appareil</span><input type="text" id="dev" value="BAURA-PC" maxlength="24" spellcheck="false" autocomplete="off" aria-label="Nom de l'appareil" style="width:100%;height:40px;margin-top:2px"></div></div>
+      </section>
+
+      <section class="pane" data-s="2">
+        <h1>Langue</h1><p class="lead">La langue du système et des applications. Tu pourras la changer plus tard.</p>
+        <div class="opts" id="langs"></div>
+        <div class="warn info">ℹ️ <span>Dans ce prototype, la langue choisie règle surtout le format de la date et de l'heure. Les menus restent en français.</span></div>
+      </section>
+
+      <section class="pane" data-s="3">
+        <h1>Clavier</h1><p class="lead">Choisis la disposition de tes touches, puis teste-la dans le champ ci-dessous.</p>
+        <div class="opts" id="kbs"></div>
+        <h3>Aperçu et test</h3>
+        <div class="kb" id="kbv"></div>
+        <input type="text" id="kbt" placeholder="Tape ici pour tester ton clavier…" style="width:100%" autocomplete="off" spellcheck="false">
+      </section>
+
+      <section class="pane" data-s="4">
+        <h1>Localisation</h1><p class="lead">Ton fuseau horaire règle l'horloge de la barre des tâches.</p>
+        <div class="clock"><div><div class="t" id="ct">--:--</div><small id="cd"></small></div><div style="margin-left:auto;display:flex;flex-direction:column;gap:10px;align-items:flex-end"><div class="sw" id="h12"><button data-h="0">24 h</button><button data-h="1">12 h</button></div><button class="btn gh" id="auto" style="height:38px;padding:0 18px;font-size:13px">📍 Détecter automatiquement</button></div></div>
+        <input type="search" id="tzq" placeholder="Rechercher une ville ou une région…" style="width:100%" autocomplete="off">
+        <div class="tzs" id="tzs" role="listbox"></div>
+      </section>
+
+      <section class="pane" data-s="5">
+        <h1>Disque</h1><p class="lead">Où installer BAURA OS ? Le système sera toujours le lecteur <b>C:</b>.</p>
+        <div class="modes" id="modes">
+          <button class="mode" data-m="auto"><b>⚡ Automatique <span class="chip ok">Recommandé</span></b><small>BAURA OS utilise tout le disque. Son contenu est effacé. Le plus simple.</small></button>
+          <button class="mode" data-m="manual"><b>🧩 Manuel · double démarrage</b><small>Tu gardes ton système existant (Windows…) et tu partages le disque en partitions. Un choix du système sera proposé au démarrage.</small></button>
+        </div>
+        <h3 id="dtitle">Disque 0 · SSD NVMe virtuel · 256 Go</h3>
+        <div class="pbar" id="pbar" aria-hidden="true"></div>
+        <div id="dctl"></div>
+        <table class="pt" id="pt"></table>
+        <div id="dwarn"></div>
+      </section>
+
+      <section class="pane" data-s="6">
+        <h1>Licence</h1><p class="lead">Fais défiler jusqu'en bas pour pouvoir accepter.</p>
+        <div class="lic" id="lic"><h4>1. Le logiciel</h4><p>BAURA OS est un prototype d'interface. Il est fourni tel quel, sans garantie, à des fins de démonstration et d'apprentissage.</p>
+          <h4>2. Tes données</h4><p>Tes fichiers, réglages et comptes restent dans le stockage de ton navigateur. Rien n'est envoyé à un serveur. Les effacer supprime définitivement ces données.</p>
+          <h4>3. Les applications</h4><p>Les applications installées depuis App shop s'exécutent dans l'interface. Les droits d'administrateur sont demandés pour toute installation ou modification du système.</p>
+          <h4>4. Le disque virtuel</h4><p>L'installation modifie uniquement un disque simulé. Aucune partition réelle de ton ordinateur n'est lue, déplacée ou effacée, même si tu choisis le partitionnement manuel.</p>
+          <h4>5. Marque</h4><p>Le nom BAURA, le symbole en trois formes et la charte graphique appartiennent à leur auteur.</p>
+          <h4>6. Responsabilité</h4><p>L'auteur ne peut être tenu responsable d'une perte de données liée à l'usage de ce prototype.</p>
+          <h4>7. Fin du document</h4><p>Merci d'avoir lu jusqu'ici. Tu peux maintenant accepter les conditions.</p></div>
+        <div class="rd2"><i id="rdp"></i></div>
+        <label class="chk dis" id="accl"><input type="checkbox" id="acc"> J'ai lu et j'accepte les conditions d'utilisation</label>
+      </section>
+
+      <section class="pane" data-s="7">
+        <h1>Récapitulatif</h1><p class="lead">Vérifie tout avant de lancer l'installation. Tu peux modifier chaque point.</p>
+        <div class="recap" id="recap"></div>
+        <h3>Applications à installer</h3>
+        <div class="opts one" id="pack"></div>
+      </section>
+
+      <section class="pane" data-s="8">
+        <h1 id="pt8">Installation en cours…</h1><p class="lead">Ne ferme pas cette fenêtre. Cela ne prend qu'un instant.</p>
+        <div class="prog"><div class="pl"><span id="plab">Préparation du disque…</span><b id="ppct">0 %</b></div><div class="big"><i id="pbig"></i></div>
+          <div class="ph" id="ph"></div><div class="log" id="log" aria-live="off"></div><div class="tip" id="tip"></div></div>
+      </section>
+
+      <section class="pane" data-s="9">
+        <div class="okc"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <h1>BAURA OS est installé</h1><p class="lead">Redémarre pour découvrir ton nouveau système. Tu créeras ton compte au premier démarrage.</p>
+        <div class="recap" id="recap2"></div>
+      </section>
+    </div>
+    <div class="foot" id="foot"><button class="btn gh" id="back">Retour</button><span class="hint" id="hint"></span><button class="btn pri" id="next">Commencer</button></div>
+  </main>
+</div>
+<script src="baura-system.js"></script>
+<script>
+(function(){
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const STEPS=['Accueil','Infos','Langue','Clavier','Localisation','Disque','Licence','Récap','Installation','Terminé'];
+  const LAST=9, INST=8;
+  const LANGS=[['fr','🇫🇷','Français','France','fr-FR'],['en','🇬🇧','English','United Kingdom','en-GB'],['es','🇪🇸','Español','España','es-ES'],['de','🇩🇪','Deutsch','Deutschland','de-DE'],['pt','🇵🇹','Português','Portugal','pt-PT'],['ar','🇸🇦','العربية','المملكة العربية السعودية','ar']];
+  const KBS=[['fr','Français · AZERTY','France',['azertyuiop','qsdfghjklm','wxcvbn']],['us','Anglais · QWERTY','États-Unis',['qwertyuiop','asdfghjkl','zxcvbnm']],['de','Allemand · QWERTZ','Allemagne',['qwertzuiop','asdfghjkl','yxcvbnm']],['be','Belge · AZERTY','Belgique',['azertyuiop','qsdfghjklm','wxcvbn']],['es','Espagnol · QWERTY','Espagne',['qwertyuiop','asdfghjklñ','zxcvbnm']],['dv','Dvorak','Disposition alternative',['pyfgcrl','aoeuidhtns','qjkxbmwvz']]];
+  const DISK={n:'Disque 0',t:'SSD NVMe virtuel',gb:256};
+  const PACKS={full:['Complète','Les 16 applications : bureautique, création, vidéo, messagerie, etc.',null],rec:['Essentielle','Fichiers, HOUB, Notes, Photos, Musique, Calculatrice, Terminal, Paramètres et App shop.',['fichiers','web','notes','photos','musique','calc','terminal','params','store']],min:['Minimale','Seulement le système (Fichiers, Terminal, Paramètres, App shop). Le reste s\'ajoute depuis App shop.',['fichiers','terminal','params','store']]};
+  const tzDef=(()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Paris' }catch(e){ return 'Europe/Paris' } })();
+  const ST={step:0,max:0,lang:'fr',kb:'fr',tz:tzDef,h12:false,mode:'auto',sys:64,data:true,win:130,dev:'BAURA-PC',pack:'full',read:false,hw:null};
+  const fast=Baura.param('fast')==='1'||document.documentElement.dataset.motion==='reduce';
+  const sleep=ms=>new Promise(r=>setTimeout(r,fast?ms/12:ms));
+  const paint=el=>el.style.setProperty('--p',((el.value-el.min)/(el.max-el.min)*100)+'%');
+  const lang=()=>LANGS.find(l=>l[0]===ST.lang), kb=()=>KBS.find(k=>k[0]===ST.kb);
+  const tzList=(()=>{ try{ return Intl.supportedValuesOf('timeZone') }catch(e){ return ['Africa/Abidjan','Africa/Algiers','Africa/Cairo','Africa/Casablanca','Africa/Dakar','Africa/Lagos','America/Montreal','America/New_York','America/Los_Angeles','America/Sao_Paulo','Asia/Dubai','Asia/Tokyo','Asia/Kolkata','Europe/Berlin','Europe/London','Europe/Madrid','Europe/Paris','Europe/Rome','UTC'] } })();
+  if(!tzList.includes(ST.tz)) tzList.unshift(ST.tz);
+  const fmtT=(tz,h12,o)=>{ try{ return new Intl.DateTimeFormat(lang()[4],Object.assign({hour:'2-digit',minute:'2-digit',hour12:h12,timeZone:tz},o||{})).format(new Date()) }catch(e){ return '--:--' } };
+
+  /* ---------- partitions (calculées à partir des choix) ---------- */
+  function parts(){
+    const P=[], efi=.5, G=DISK.gb;
+    if(ST.mode==='auto'){
+      const data=ST.data?Math.max(0,G-efi-ST.sys):0, sys=ST.data?ST.sys:G-efi;
+      P.push({k:'efi',name:'Démarrage (EFI)',fs:'FAT32',gb:efi,color:'#94A3C4',keep:false});
+      P.push({k:'sys',letter:'C',name:'BAURA OS',fs:'BFS',gb:sys,color:'var(--a1)'});
+      if(data>0) P.push({k:'data',letter:'D',name:'Données',fs:'BFS',gb:data,color:'#A78BFA'});
+    } else {
+      const free=Math.max(0,G-efi-ST.win-ST.sys);
+      P.push({k:'efi',name:'Démarrage (EFI) · partagé',fs:'FAT32',gb:efi,color:'#94A3C4'});
+      P.push({k:'win',letter:'E',name:'Windows 11 · conservé',fs:'NTFS',gb:ST.win,color:'#38BDF8'});
+      P.push({k:'sys',letter:'C',name:'BAURA OS',fs:'BFS',gb:ST.sys,color:'var(--a1)'});
+      if(ST.data&&free>0) P.push({k:'data',letter:'D',name:'Données',fs:'BFS',gb:free,color:'#A78BFA'}); else if(free>0) P.push({k:'free',name:'Espace non alloué',fs:'—',gb:free,color:'#CBD5E1'});
+    }
+    return P;
+  }
+  const gbs=n=>(n<10?n.toFixed(1):Math.round(n)).toString().replace('.',',')+' Go';
+
+  /* ---------- panneau de gauche ---------- */
+  function drawCard(){
+    const hw=ST.hw||{}, P=ST.max>=5?parts():null;
+    const row=(ico,l,v,todo)=>`<div class="kv${todo?' todo':''}"><i>${ico}</i><div style="min-width:0"><span>${l}</span><b>${esc(v)}</b></div></div>`;
+    const s=ST.max;
+    $('#card').innerHTML=`<h5>Matériel</h5>`+row('🧠','Processeur',s>=1?hw.cpu:'À analyser',s<1)+row('💾','Mémoire',s>=1?hw.ram:'À analyser',s<1)+row('🖥️','Écran',s>=1?hw.scr:'À analyser',s<1)+
+      `<h5>Préférences</h5>`+row(lang()[1],'Langue',s>=3?lang()[2]:'—',s<3)+row('⌨️','Clavier',s>=4?kb()[1]:'—',s<4)+row('🕒','Fuseau horaire',s>=5?ST.tz.replace(/_/g,' ')+' · '+fmtT(ST.tz,ST.h12):'—',s<5)+
+      `<h5>Stockage</h5>`+row('🗄️','Disque',s>=6?(ST.mode==='auto'?'Automatique · disque entier':'Manuel · double démarrage'):'—',s<6)+
+      (P?`<div class="mini">${P.map(p=>`<i style="flex:${p.gb};background:${p.color}" title="${esc(p.name)}"></i>`).join('')}</div>`:'')+
+      `<h5>Système</h5>`+row('📱','Nom',ST.dev||'—',!ST.dev)+row('🧩','Applications',s>=8?PACKS[ST.pack][0]:'—',s<8);
+    // symbole : une forme s'allume par groupe d'étapes
+    const lit=ST.step>=INST?4:ST.max>=7?3:ST.max>=5?2:ST.max>=2?1:0;
+    $$('.sym .s').forEach((e,i)=>e.classList.toggle('on',i<lit));
+    $('#symt').innerHTML=['Chaque choix allume<br>une forme du symbole.','La barre est allumée.<br>Continue !','Le premier demi-disque brille.','Le deuxième demi-disque brille.','Le point doré : c\'est parti.'][lit];
+  }
+
+  /* ---------- étapes : rendus ---------- */
+  function hwInfo(){
+    const g=()=>{ try{ const c=document.createElement('canvas').getContext('webgl'), e=c.getExtension('WEBGL_debug_renderer_info'); return e?c.getParameter(e.UNMASKED_RENDERER_WEBGL):c.getParameter(c.RENDERER) }catch(e){ return 'Graphique intégré' } };
+    const cores=navigator.hardwareConcurrency||4, mem=navigator.deviceMemory||4, sw=screen.width*(devicePixelRatio||1)|0, sh=screen.height*(devicePixelRatio||1)|0;
+    const net=navigator.connection?(navigator.connection.effectiveType||'').toUpperCase()+(navigator.connection.downlink?' · '+navigator.connection.downlink+' Mb/s':''):'En ligne';
+    const plat=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'Inconnu';
+    ST.hw={cpu:cores+' cœurs logiques',ram:(mem>=8?'8 Go ou plus':mem+' Go'),scr:sw+' × '+sh+' px',gpu:String(g()).replace(/ANGLE \(|\)$/g,'').slice(0,60),net:navigator.onLine?net:'Hors ligne',plat,cores,mem,sw,sh};
+  }
+  function drawSpecs(){
+    const h=ST.hw, ok=(c)=>`<span class="chip ${c?'ok':'bad'}">${c?'✓ Compatible':'✕ Insuffisant'}</span>`;
+    $('#specs').innerHTML=[['Processeur',h.cpu,ok(h.cores>=2)],['Mémoire vive',h.ram,ok(h.mem>=2)],['Écran',h.scr+' · '+(devicePixelRatio||1)+'×',ok(h.sw>=1024)],['Carte graphique',h.gpu,''],['Connexion',h.net,''],['Plateforme hôte',h.plat,'']].map(([a,b,c])=>`<div class="spec"><span>${a}</span><b>${esc(b)}</b>${c}</div>`).join('');
+    const all=h.cores>=2&&h.mem>=2&&h.sw>=1024; $('#compat').innerHTML=all?'Ton appareil est compatible ✓':'Performances limitées ⚠️';
+  }
+  function drawLangs(){ $('#langs').innerHTML=LANGS.map(([k,f,n,c])=>`<button class="opt${ST.lang===k?' on':''}" data-l="${k}"><span class="fl">${f}</span><div><b>${n}</b><small>${c}</small></div><span class="rd"></span></button>`).join('') }
+  function drawKbs(){
+    $('#kbs').innerHTML=KBS.map(([k,n,c])=>`<button class="opt${ST.kb===k?' on':''}" data-k="${k}"><span class="fl">⌨️</span><div><b>${n}</b><small>${c}</small></div><span class="rd"></span></button>`).join('');
+    $('#kbv').innerHTML=kb()[3].map(r=>`<div class="kr">${[...r].map(c=>`<div class="key" data-c="${c}">${c}</div>`).join('')}</div>`).join('')+`<div class="kr"><div class="key space" data-c=" ">espace</div></div>`;
+  }
+  function drawTz(){
+    const q=$('#tzq').value.trim().toLowerCase().replace(/ /g,'_'), l=tzList.filter(z=>!q||z.toLowerCase().includes(q)).slice(0,80);
+    $('#tzs').innerHTML=l.map(z=>`<button class="tz${z===ST.tz?' on':''}" data-z="${z}" role="option"><b style="font-weight:inherit">${esc(z.replace(/_/g,' ').replace('/',' · '))}</b><span>${fmtT(z,ST.h12)}</span></button>`).join('')||'<div style="padding:18px;color:var(--mut)">Aucun résultat.</div>';
+    $$('#h12 button').forEach(b=>b.classList.toggle('on',(b.dataset.h==='1')===ST.h12));
+    tickClock();
+  }
+  function tickClock(){ if(!$('#ct')) return; $('#ct').textContent=fmtT(ST.tz,ST.h12); try{ $('#cd').textContent=new Intl.DateTimeFormat(lang()[4],{dateStyle:'full',timeZone:ST.tz}).format(new Date())+' · '+ST.tz.replace(/_/g,' ') }catch(e){} }
+  function drawDisk(){
+    const G=DISK.gb, efi=.5, P=parts(), manual=ST.mode==='manual';
+    $$('#modes .mode').forEach(m=>m.classList.toggle('on',m.dataset.m===ST.mode));
+    $('#dtitle').textContent=`${DISK.n} · ${DISK.t} · ${G} Go`;
+    $('#pbar').innerHTML=P.map(p=>`<i style="flex:${p.gb};background:${p.color}">${p.letter?p.letter+':':''}</i>`).join('');
+    let c='';
+    if(manual){
+      const wmax=Math.min(200,G-efi-24-8), wmin=70; ST.win=Math.max(wmin,Math.min(wmax,ST.win));
+      const smax=G-efi-ST.win-(ST.data?4:0); ST.sys=Math.max(24,Math.min(smax,ST.sys));
+      c+=`<div class="sl"><span>Windows 11 (conservé)</span><input type="range" id="rw" min="${wmin}" max="${wmax}" value="${ST.win}"><b>${ST.win} Go</b></div>`;
+    } else { const smax=G-efi-(ST.data?4:0); ST.sys=Math.max(24,Math.min(smax,ST.sys)) }
+    const smax=manual?G-efi-ST.win-(ST.data?4:0):G-efi-(ST.data?4:0);
+    c+=`<div class="sl"><span>Taille de BAURA OS (C:)</span><input type="range" id="rs" min="24" max="${Math.max(25,smax)}" value="${ST.sys}"><b>${ST.sys} Go</b></div>`;
+    c+=`<label class="tgl"><input type="checkbox" id="dd" ${ST.data?'checked':''}> Utiliser le reste comme lecteur de données (D:)</label>`;
+    $('#dctl').innerHTML=c; $$('#dctl input[type=range]').forEach(paint);
+    $('#pt').innerHTML=`<tr><th>Lecteur</th><th>Partition</th><th>Format</th><th>Taille</th></tr>`+P.map(p=>`<tr><td>${p.letter?`<span class="ltr" style="background:${p.color}">${p.letter}:</span>`:'<span style="color:var(--mut)">—</span>'}</td><td>${esc(p.name)}</td><td>${p.fs}</td><td>${gbs(p.gb)}</td></tr>`).join('');
+    $('#dwarn').innerHTML=manual?`<div class="warn info">ℹ️ <span><b>Double démarrage :</b> Windows est conservé tel quel (réduit à ${ST.win} Go) et reste accessible en lecture sous <b>E:</b>. Au démarrage, un menu te laissera choisir BAURA OS ou Windows.</span></div>`
+      :`<div class="warn">⚠️ <span><b>Tout le contenu de ${DISK.n} sera effacé.</b> Pour garder un autre système, choisis le mode manuel.</span></div>`;
+  }
+  function drawRecap(target){
+    const P=parts(), L=lang();
+    const items=[['💻','Appareil',ST.dev,ST.hw.cpu+' · '+ST.hw.ram,1],[L[1],'Langue',L[2],L[3],2],['⌨️','Clavier',kb()[1],kb()[2],3],['🕒','Heure',ST.tz.replace(/_/g,' '),(ST.h12?'12 h':'24 h')+' · '+fmtT(ST.tz,ST.h12),4],
+      ['🗄️','Disque',ST.mode==='auto'?'Automatique · disque entier':'Manuel · double démarrage',P.filter(p=>p.letter).map(p=>p.letter+': '+gbs(p.gb)).join(' · '),5]];
+    const rc=([i,a,b,c,s])=>`<div class="rc"><i>${i}</i><div style="min-width:0"><span>${a}</span><b>${esc(b)}</b><small>${esc(c)}</small></div>${target==='r1'?`<button data-j="${s}">Modifier</button>`:''}</div>`;
+    $(target==='r1'?'#recap':'#recap2').innerHTML=items.map(rc).join('')+(ST.mode==='auto'?`<div class="rc wide"><i>⚠️</i><div><span>Attention</span><b>Le disque sera entièrement effacé</b></div></div>`:'');
+  }
+  function drawPack(){ $('#pack').innerHTML=Object.entries(PACKS).map(([k,[t,s]])=>`<button class="opt${ST.pack===k?' on':''}" data-p="${k}"><div><b>${t}</b><small>${s}</small></div><span class="rd"></span></button>`).join('') }
+
+  /* ---------- navigation ---------- */
+  function drawTrack(){
+    $('#trk').innerHTML=STEPS.map((n,i)=>`<i role="listitem" class="${i===ST.step?'on':i<ST.step?'done':''}" ${i<ST.step&&ST.step<INST?`data-g="${i}" title="${n}"`:''}></i>`).join('');
+    $('#cnt').textContent=ST.step<=INST?`Étape ${ST.step+1} sur ${STEPS.length-1}`:'Terminé'; $('#cname').textContent=STEPS[ST.step];
+  }
+  function valid(){
+    const s=ST.step; if(s===1) return !!ST.dev.trim(); if(s===6) return ST.read&&$('#acc').checked; return true;
+  }
+  const NEXT=['Commencer','Continuer','Continuer','Continuer','Continuer','Continuer','Continuer','Installer','','Redémarrer maintenant'];
+  const HINTS=['','','','','','','Fais défiler la licence jusqu\'en bas.','Une dernière vérification.','',''];
+  function go(n){
+    ST.step=Math.max(0,Math.min(LAST,n)); ST.max=Math.max(ST.max,ST.step);
+    $$('.pane').forEach(p=>p.classList.toggle('on',+p.dataset.s===ST.step)); $('#scroll').scrollTop=0;
+    const s=ST.step;
+    if(s===1) drawSpecs(); if(s===2) drawLangs(); if(s===3){ drawKbs(); } if(s===4) drawTz(); if(s===5) drawDisk(); if(s===6) lic(); if(s===7){ drawRecap('r1'); drawPack() } if(s===9) drawRecap('r2');
+    drawTrack(); drawCard();
+    $('#foot').style.display=s===INST?'none':'flex'; $('#back').style.visibility=(s===0||s===LAST)?'hidden':'visible';
+    $('#next').textContent=NEXT[s]; $('#hint').textContent=HINTS[s]; $('#next').disabled=!valid();
+    if(s===INST) install();
+    setTimeout(()=>{ try{ (s===1?$('#dev'):s===3?$('#kbt'):s===4?$('#tzq'):$('#next')).focus({preventScroll:true}) }catch(e){} },160);
+  }
+  function lic(){ const l=$('#lic'), f=()=>{ const p=l.scrollTop/(l.scrollHeight-l.clientHeight||1); $('#rdp').style.width=Math.min(100,p*100)+'%'; if(p>.97){ ST.read=true; $('#accl').classList.remove('dis') } }; l.onscroll=f; f(); if(ST.read) $('#accl').classList.remove('dis') }
+
+  $('#next').onclick=()=>{ if(ST.step===LAST) finish(); else go(ST.step+1) };
+  $('#back').onclick=()=>go(ST.step-1);
+  $('#trk').onclick=e=>{ const g=e.target.closest('[data-g]'); if(g) go(+g.dataset.g) };
+  $('#langs').onclick=e=>{ const b=e.target.closest('[data-l]'); if(b){ ST.lang=b.dataset.l; drawLangs(); drawCard() } };
+  $('#kbs').onclick=e=>{ const b=e.target.closest('[data-k]'); if(b){ ST.kb=b.dataset.k; drawKbs(); drawCard(); $('#kbt').focus() } };
+  $('#kbt').addEventListener('keydown',e=>{ const k=e.key.length===1?e.key.toLowerCase():''; const el=$$('#kbv .key').find(x=>x.dataset.c===k); if(el){ el.classList.add('hit'); setTimeout(()=>el.classList.remove('hit'),140) } });
+  $('#dev').oninput=e=>{ ST.dev=e.target.value; $('#next').disabled=!valid(); drawCard() };
+  $('#tzq').oninput=drawTz;
+  $('#tzs').onclick=e=>{ const b=e.target.closest('[data-z]'); if(b){ ST.tz=b.dataset.z; drawTz(); drawCard() } };
+  $('#h12').onclick=e=>{ const b=e.target.closest('[data-h]'); if(b){ ST.h12=b.dataset.h==='1'; drawTz(); drawCard() } };
+  $('#auto').onclick=()=>{ ST.tz=tzDef; $('#tzq').value=''; drawTz(); drawCard(); const o=$('#tzs .on'); if(o) o.scrollIntoView({block:'center'}) };
+  $('#modes').onclick=e=>{ const b=e.target.closest('[data-m]'); if(b){ ST.mode=b.dataset.m; if(ST.mode==='manual'&&ST.sys>60) ST.sys=60; if(ST.mode==='auto'&&ST.sys<64) ST.sys=96; drawDisk(); drawCard() } };
+  $('#dctl').oninput=e=>{ if(e.target.id==='rw'){ ST.win=+e.target.value } else if(e.target.id==='rs'){ ST.sys=+e.target.value } else return; const a=e.target; drawDisk(); const n=$('#'+a.id); if(n){ n.focus() } drawCard() };
+  $('#dctl').onchange=e=>{ if(e.target.id==='dd'){ ST.data=e.target.checked; drawDisk(); drawCard() } };
+  $('#acc').onchange=()=>{ $('#next').disabled=!valid() };
+  $('#recap').onclick=e=>{ const b=e.target.closest('[data-j]'); if(b) go(+b.dataset.j) };
+  $('#pack').onclick=e=>{ const b=e.target.closest('[data-p]'); if(b){ ST.pack=b.dataset.p; drawPack(); drawCard() } };
+  addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.target.closest('button,textarea')&&!$('#next').disabled&&ST.step!==INST&&ST.step!==4){ e.preventDefault(); $('#next').click() } });
+  setInterval(()=>{ if(ST.step===4) tickClock() },1000);
+
+  /* ---------- installation ---------- */
+  const TIPS=['Astuce : Ctrl+Espace ouvre la recherche partout dans BAURA OS.','Astuce : glisse une fenêtre vers un bord de l\'écran pour l\'ancrer.','Astuce : clic droit sur une application de la barre pour l\'épingler.','Astuce : tape « help » dans le Terminal pour voir les commandes.','Astuce : App shop te permet d\'ajouter ou de retirer des applications.'];
+  async function install(){
+    const big=$('#pbig'), log=$('#log'), lab=$('#plab'), pct=$('#ppct'), tip=$('#tip'), P=parts();
+    const PH=[
+      ['Préparation du disque',[`Détection de ${DISK.n} (${DISK.gb} Go)`,'Création de la table de partitions GPT',...(ST.mode==='manual'?['Réduction de la partition Windows à '+ST.win+' Go','Conservation du chargeur Windows']:['Effacement de '+DISK.n]),...P.filter(p=>p.letter&&p.k!=='win').map(p=>`Création de ${p.letter}: · ${p.name} · ${gbs(p.gb)}`)]],
+      ['Copie du système',['Copie de baura-system.js','Copie de baura-theme.css','Copie du bureau et de la barre des tâches','Copie des polices et des icônes','Copie des fonds d\'écran']],
+      ['Composants',['Gestionnaire de fenêtres','Écran de connexion',`Disposition du clavier : ${kb()[1]}`,`Langue : ${lang()[2]}`,`Fuseau horaire : ${ST.tz}`,'Enregistrement des applications ('+PACKS[ST.pack][0].toLowerCase()+')']],
+      ['Démarrage',[ST.mode==='manual'?'Installation du gestionnaire de démarrage (BAURA OS / Windows)':'Écriture du chargeur de démarrage','Création du profil utilisateur','Dernières vérifications']]
+    ];
+    $('#ph').innerHTML=PH.map(p=>`<div>${p[0]}</div>`).join('');
+    const total=PH.reduce((a,p)=>a+p[1].length,0); let k=0; log.innerHTML=''; tip.textContent=TIPS[0];
+    for(let i=0;i<PH.length;i++){ const [l,lines]=PH[i]; lab.textContent=l+'…'; $$('#ph div').forEach((d,j)=>{ d.className=j<i?'done':j===i?'on':'' });
+      for(const t of lines){ const row=document.createElement('div'); row.innerHTML=`<em>●</em> ${esc(t)}`; log.appendChild(row); while(log.children.length>8) log.firstChild.remove();
+        k++; const v=k/total*100; big.style.width=v+'%'; pct.textContent=Math.round(v)+' %'; if(k%3===0) tip.textContent=TIPS[(k/3|0)%TIPS.length];
+        await sleep(480+Math.random()*380) } }
+    $$('#ph div').forEach(d=>d.className='done'); lab.textContent='Terminé'; await sleep(500); commit(); go(LAST);
+  }
+  function commit(){
+    const P=parts(), ids=PACKS[ST.pack][2];
+    Baura.store.set('apps',ids||[]);
+    if(!ids) Baura.store.set('apps',['fichiers','web','videos','photos','musique','notes','skrib','numbro','wepoint','data','crea','bmail','calc','terminal','params','store']);
+    Baura.store.set('appsRev',2);
+    Baura.store.set('device',{name:ST.dev.trim()||'BAURA-PC',disk:DISK.n,diskGb:DISK.gb,sysGb:P.find(p=>p.k==='sys').gb,mode:ST.mode,partitions:P.filter(p=>p.letter||p.k==='efi').map(p=>({letter:p.letter||null,label:p.name,fs:p.fs,gb:+p.gb.toFixed(1)})),
+      lang:ST.lang,locale:lang()[4],kb:ST.kb,tz:ST.tz,h12:ST.h12,pack:ST.pack,hw:{cpu:ST.hw.cpu,ram:ST.hw.ram,scr:ST.hw.scr,gpu:ST.hw.gpu}});
+    Baura.store.set('installed',{v:'0.4',date:Date.now()});
+  }
+  function finish(){ $('#next').disabled=true; Baura.send('install-done') }
+
+  hwInfo(); go(0);
+  Baura.onMessage(t=>{ if(t==='reset'){ ST.step=0; ST.max=0; ST.read=false; go(0) } });
+})();
+</script>
+</body>
+</html>

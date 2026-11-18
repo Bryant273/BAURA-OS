@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C46B8"/><stop offset="1" stop-color="#1E1B4B"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A2570" stop-opacity="1.00"/><stop offset="1" stop-color="#0F0B2E" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M16 12H48A7 7 0 0 1 55 19V45A7 7 0 0 1 48 52H16A7 7 0 0 1 9 45V19A7 7 0 0 1 16 12Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M16 12H48A7 7 0 0 1 55 19V45A7 7 0 0 1 48 52H16A7 7 0 0 1 9 45V19A7 7 0 0 1 16 12Z" fill="url(#g1)"/>
+<path d="M17.5 18H43.1A2.5 2.5 0 0 1 45.6 20.5V20.5A2.5 2.5 0 0 1 43.1 23H17.5A2.5 2.5 0 0 1 15 20.5V20.5A2.5 2.5 0 0 1 17.5 18Z" fill="#5EEAD4" fill-opacity="0.90"/>
+<path d="M17.5 27H36.3A2.5 2.5 0 0 1 38.8 29.5V29.5A2.5 2.5 0 0 1 36.3 32H17.5A2.5 2.5 0 0 1 15 29.5V29.5A2.5 2.5 0 0 1 17.5 27Z" fill="#E5C34A" fill-opacity="0.90"/>
+<path d="M17.5 36H29.5A2.5 2.5 0 0 1 32 38.5V38.5A2.5 2.5 0 0 1 29.5 41H17.5A2.5 2.5 0 0 1 15 38.5V38.5A2.5 2.5 0 0 1 17.5 36Z" fill="#5EEAD4" fill-opacity="0.90"/>
+<path d="M17.5 45H22.7A2.5 2.5 0 0 1 25.2 47.5V47.5A2.5 2.5 0 0 1 22.7 50H17.5A2.5 2.5 0 0 1 15 47.5V47.5A2.5 2.5 0 0 1 17.5 45Z" fill="#5EEAD4" fill-opacity="0.90"/>
+</svg>

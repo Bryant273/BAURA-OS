@@ -26,12 +26,14 @@ SECTIONS
     .data :
     {
         *(.data .data.*)
+        *(.tdata .tdata.*)
     } :data
 
     .bss (NOLOAD) :
     {
         *(COMMON)
         *(.bss .bss.*)
+        *(.tbss .tbss.*)
     } :data
 
     /DISCARD/ :

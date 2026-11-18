@@ -1,0 +1,359 @@
+From 9634ca853922370ba8f6e63e6ee4cd20ec83ce11 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 21 Oct 2026 20:30:12 +0000
+Subject: [PATCH 2/5] Extend driver guide: detection sources, driver method,
+ docs, real-PC protocol
+
+- Section 3.6: split every driver into a hardware half and a system half behind
+  a small access interface, so the logic is host-testable (same pattern as the
+  PCI backend).
+- Section 4.5: where each piece of hardware information comes from (BootInfo,
+  CPUID, ACPI, SMBIOS, USB, I2C) and how to verify detection against a Linux
+  live reference.
+- Section 11: documentation sources (specs, BSD/Linux reference drivers, GPU
+  docs, seL4), links collected by search.
+- Section 12: protocol for the first run on a physical PC, based on seL4's x86
+  documentation and a community report of a silent boot failure.
+- Correct the storage driver crate description: it is a non-compiling mock-up.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PNWzsy9sebpebHVW9npSuq
+---
+ KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md     |   5 +
+ KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md | 261 +++++++++++++++++-
+ 2 files changed, 261 insertions(+), 5 deletions(-)
+
+diff --git a/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md b/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
+index 10981c9..6188ef4 100644
+--- a/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
++++ b/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
+@@ -60,6 +60,7 @@ history (last present in commit `86642c0`) if their content is needed.
+ | Rescan | A device found again at the same location keeps its `device_id` and driver binding; a device that disappeared leaves the list. There is no unbind callback for removed devices yet |
+ | Driver execution | In-process C probe callback; no driver image loading, isolation, task lifecycle, or resource delegation |
+ | Driver lifecycle | Rust crate defines a platform-backend contract; no concrete seL4 backend is bound |
++| Storage driver | None. `USERSPACE/DRIVERS/STORAGE_DRIVERS` is a mock-up, not a driver: reads return dummy data, writes do nothing and report success, no register is accessed, and the crate does not compile (`uintptr_t` is not a Rust type; `cargo check` reports 3 errors) |
+ | Resource assignment | Not implemented; BAR values are retained as raw PCI config dwords with a validity mask and are not sized, mapped or authorized; MSI/MSI-X are located but not configured |
+ | Non-PCI discovery | No USB, ACPI device enumeration, ACPI namespace, or device-tree discovery service |
+ | ABI exposure | No device-enumeration or driver-management operation in API/ABI v2 |
+@@ -112,6 +113,10 @@ working USB/UART controller, transport driver, firmware and Bluetooth stack.
+    initial task matches the machine's actual devices.
+ 2. Add negative tests for the seL4 binding: missing or insufficient
+    capabilities, an exhausted `empty` region.
++   Before any run on a physical PC, follow the protocol in section 12 of
++   `DRIVER_DEVELOPMENT_GUIDE.md`: seL4's own documentation describes serial as
++   the console on real hardware, and a community report shows a silent black
++   screen on a bare-metal boot, so a framebuffer console is a prerequisite.
+ 3. Replace in-process probe callbacks with versioned driver metadata, exact
+    match tables, explicit resource requirements, and isolated task loading
+    through the platform backend. Keep broad class matching as fallback only.
+diff --git a/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+index 17826bd..fd5a0fa 100644
+--- a/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
++++ b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+@@ -168,9 +168,14 @@ Un pilote ne parle pas directement aux applications. Il s'enregistre auprès d'u
+ service de classe, via les interfaces déjà présentes dans le Core :
+ 
+ - **Stockage** : callbacks de blocs consommés par `volume_manager` (LBA
+-  vérifiés) puis le VFS. Le crate `USERSPACE/DRIVERS/STORAGE_DRIVERS` définit
+-  déjà des points d'entrée `driver_init / driver_read / driver_write` à aligner
+-  avec cette interface.
++  vérifiés) puis le VFS. Le crate `USERSPACE/DRIVERS/STORAGE_DRIVERS` n'est
++  **pas** un pilote : c'est une maquette. `read_block` remplit le tampon avec
++  une valeur factice et affiche un message, `write_block` ne fait rien et
++  retourne « succès », aucun registre n'est lu ni écrit, et le crate **ne
++  compile pas** (`uintptr_t` n'existe pas en Rust ; `cargo check` donne 3
++  erreurs). Son idée de points d'entrée `driver_init / driver_read /
++  driver_write` peut servir de point de départ, mais il faut le réécrire pour
++  le premier vrai pilote (virtio-blk, §7), en le séparant en deux moitiés (§3.6).
+ - **Réseau** : callback d'émission de trames consommé par `baura_network`
+   (MTU validé).
+ - **Entrée** : événements clavier/souris vers le bus d'événements / la GUI.
+@@ -186,6 +191,54 @@ service de classe, via les interfaces déjà présentes dans le Core :
+ 5. Gérer : timeout sur chaque attente de registre, erreurs du matériel, arrêt
+    propre, double `start()`.
+ 6. Tester le crash volontaire du pilote et son redémarrage.
++7. Avant tout essai sur PC réel : appliquer le protocole du §12.
++
++### 3.6 Méthode : deux moitiés, séparées dans le code
++
++Un pilote se découpe en deux parties qui ne se développent pas de la même façon.
++
++| Moitié | Contenu | D'où vient le savoir | Test |
++| --- | --- | --- | --- |
++| **Matériel** | Registres, séquence d'initialisation, commandes, gestion des erreurs | Spécification de l'appareil, puis pilotes existants (§11) | Sur ton PC, avec un faux appareil |
++| **Système** | Obtenir les registres (mapping), la mémoire DMA, les interruptions, un délai ; s'annoncer au Core | seL4 (manuel, §3.3) et ton propre Core | QEMU, puis PC réel |
++
++La règle qui rend le tout testable : **la logique du pilote n'appelle jamais
++seL4 directement.** Elle passe par une petite interface que la moitié système
++implémente (proposition) :
++
++```c
++/* Proposition. La logique du pilote ne connaît que cette interface. */
++typedef struct {
++    uint32_t    (*read32)(void *ctx, uint32_t offset);               /* registre MMIO */
++    void        (*write32)(void *ctx, uint32_t offset, uint32_t value);
++    BauraStatus (*dma_alloc)(void *ctx, size_t size, BauraDmaBuffer *out); /* adresses virtuelle + physique */
++    BauraStatus (*wait_irq)(void *ctx, uint32_t timeout_us);         /* attend une interruption, avec délai maximal */
++    void        (*delay_us)(void *ctx, uint32_t us);
++    void        *ctx;
++} BauraHwAccess;
++```
++
++C'est le schéma déjà utilisé pour le PCI (`BauraPciPortIo` dans
++`BOOT/SEL4/pci_backend.h`) : la logique est dans `pci_backend.c`, l'accès seL4
++dans `pci_backend_sel4.c`, et les tests simulent un hôte PCI.
++
++Procédure pour chaque nouveau pilote :
++
++1. Lire la spécification de l'appareil (§11) et noter les sections utiles.
++2. Lire un pilote existant (BSD en premier, puis Linux) **comme référence** :
++   ordre d'initialisation, pièges liés à des révisions, valeurs d'attente.
++3. Écrire la logique **à partir de la spécification**, avec un commentaire qui
++   cite la section suivie (par exemple « AHCI 1.3.1, §10.1.2 »). Ça rend chaque
++   choix vérifiable et évite de recopier sans s'en rendre compte.
++4. Écrire un faux appareil (registres simulés) et les tests hôte : succès,
++   timeout, erreur du matériel, réponse incohérente.
++5. Écrire la moitié système (`BauraHwAccess` pour seL4), puis tester sous QEMU.
++6. Seulement ensuite, essayer sur PC réel (§12).
++
++**S'inspirer sans copier.** Consigner dans `THIRD_PARTY_DRIVERS.md` (§8.3) chaque
++pilote **consulté**, même si aucune ligne n'est reprise : origine, licence,
++version. En cas de doute sur ce qui a été repris, ce registre permet de
++retrouver la source. Ce document n'est pas un avis juridique.
+ 
+ ---
+ 
+@@ -266,6 +319,39 @@ Ils servent à **cataloguer et nommer** ; ils ne disent pas qu'un pilote existe.
+ | Samsung (NVMe) | `0x144D` |
+ | virtio / Red Hat | `0x1AF4` |
+ 
++### 4.5 Sources de détection : d'où vient chaque information
++
++Tous les composants d'un PC ne se trouvent pas au même endroit. Le registre PCI
++n'en voit qu'une partie. Les en-têtes du BootInfo ci-dessous sont ceux de la
++version de seL4 épinglée par le sous-module (`libsel4/include/sel4/bootinfo_types.h`).
++
++| Information | Source | État dans BAURA |
++| --- | --- | --- |
++| Appareils PCI/PCIe (GPU, réseau, disques, USB, audio, ponts) | Configuration PCI : ports `0xCF8/0xCFC` ; ECAM via la table ACPI MCFG pour le PCIe complet | Ports : écrit, testé sur hôte, non démarré. ECAM : à faire |
++| Processeur (marque, modèle, fonctionnalités) | Instruction `CPUID` ([Intel SDM](https://www.intel.com/content/www/us/en/support/articles/000006715/processors.html), [AMD APM](https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24592.pdf)) | À faire |
++| Cœurs et topologie | `CPUID` + table ACPI MADT ; le BootInfo donne `numNodes` | À faire |
++| Mémoire RAM | BootInfo : `untypedList` (adresse, taille, indicateur `isDevice`) et en-tête étendu `SEL4_BOOTINFO_HEADER_X86_MBMMAP` | Non lu : `validate_boot_info` ne contrôle que les régions de slots |
++| Écran (adresse, résolution, pas) | En-têtes étendus `SEL4_BOOTINFO_HEADER_X86_FRAMEBUFFER` et `..._X86_VBE` | Non lu |
++| Fréquence du compteur de temps | En-tête `SEL4_BOOTINFO_HEADER_X86_TSC_FREQ` (en MHz) | Non lu |
++| Tables ACPI | En-tête `SEL4_BOOTINFO_HEADER_X86_ACPI_RSDP` → RSDT/XSDT → MADT (CPU, IOAPIC), MCFG (ECAM), FADT, etc. | À faire |
++| Batterie, ventilateurs, capteurs, boutons | Espace de noms ACPI (DSDT/SSDT : du bytecode AML). Demande un **interpréteur AML** (l'implémentation de référence s'appelle ACPICA ; sa licence est à vérifier avant tout usage) | À faire, après les tables statiques |
++| Périphériques I2C/SPI (pavé tactile, écran tactile, capteurs de portables) | Contrôleur (souvent visible en PCI) + description dans ACPI ; le pavé tactile est typiquement un appareil « HID over I2C » | À faire, après ACPI |
++| Marque, modèle, numéro de série, barrettes de RAM | SMBIOS ([DMTF DSP0134](https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_3.7.1.pdf)). **Pas de pointeur SMBIOS dans les en-têtes du BootInfo ci-dessus** (liste : padding, VBE, carte mémoire, RSDP, framebuffer, TSC, FDT) ; il faudrait lire la mémoire du firmware, dont la faisabilité sous seL4 est à vérifier | À faire, priorité basse |
++| Périphériques USB (clavier, souris, clés, webcam, Bluetooth USB) | Pilote xHCI puis énumération USB | À faire |
++| Modèle exact d'un disque | Commande `IDENTIFY` (SATA) ou `Identify` (NVMe), envoyée par le pilote de stockage | Après AHCI/NVMe |
++| Codecs audio | Énumérés par le pilote HD Audio sur son propre bus | Après le pilote HD Audio |
++
++Ordre conseillé : (1) lire le BootInfo (RAM, écran, RSDP), c'est le plus simple et
++ça ne demande aucun matériel ; (2) `CPUID` ; (3) les tables ACPI statiques (MCFG,
++MADT) pour passer à ECAM ; (4) USB ; (5) AML et I2C ; (6) SMBIOS.
++
++**Définition vérifiable de « tout détecter ».** Sur la **même machine**, démarre
++un Linux « live » depuis une clé séparée et relève `lspci -nn`, `lsusb`,
++`lscpu` et `dmidecode`. Le critère d'acceptation de la détection est que chaque
++appareil de `lspci -nn` apparaisse dans la liste de BAURA avec les mêmes
++vendor/device. Sous QEMU, fais la même comparaison avec un Linux invité sur la
++même machine virtuelle.
++
+ ---
+ 
+ ## 5. Attribution des bons pilotes
+@@ -544,8 +630,8 @@ font. Un pilote n'est "supporté" que s'il a passé :
+    il a besoin → échec propre, pas de blocage.
+ 4. **Tests de panne** : tuer le pilote, vérifier relance, quarantaine, et
+    retour arrière après mise à jour défectueuse.
+-5. **Matériel réel** : au moins un PC Intel et un AMD avant de déclarer le
+-   support d'une famille. Tenir une **matrice de compatibilité** (appareil,
++5. **Matériel réel**, selon le protocole du §12 : au moins un PC Intel et un AMD
++   avant de déclarer le support d'une famille. Tenir une **matrice de compatibilité** (appareil,
+    révision, pilote, état, date du test).
+ 
+ ---
+@@ -555,7 +641,9 @@ font. Un pilote n'est "supporté" que s'il a passé :
+ | Jalon | Contenu | État | Critère de réussite |
+ | --- | --- | --- | --- |
+ | M1 | Initial task seL4 qui démarre sous QEMU | À faire | Message de démarrage de l'initial task visible sur la console |
++| M1b | Console visible sans port série : texte dessiné sur le framebuffer du BootInfo ; lecture du BootInfo (RAM, écran, RSDP) | À faire | Les valeurs affichées sous QEMU correspondent à la configuration de la VM (§4.5, §12.2) |
+ | M2 | Backend PCI seL4 + installation par l'initial task | **Code écrit et testé sur hôte** ; à vérifier au démarrage (dépend de M1) | La liste d'une machine QEMU affiche les bons vendor/device |
++| M2b | Premier essai sur PC réel, **lecture seule**, selon le protocole du §12 (étages 0 à 3) | À faire | La liste PCI de BAURA couvre celle de `lspci -nn` relevée sous Linux live sur la même machine |
+ | M3 | Listing complet : classification, sous-IDs, capacités, identifiants stables, capacités du registre | **Fait** (testé sur hôte). Reste : ECAM, mesure des BAR | Tests hôte verts + comparaison avec `lspci -nn` d'une VM de référence |
+ | M4 | Catalogue de descripteurs + matcher à score + états de liaison (§5) | À faire | Tests : spécifique > générique, repli après échec de `probe`, liste noire |
+ | M5 | Backend de lancement isolé (contrat Rust → tâches seL4) + délégation de capabilities + hotplug + MSI | À faire | Un pilote trivial tourne comme tâche, crashe et redémarre sans toucher au Core |
+@@ -570,6 +658,169 @@ ce qui est **testé**.
+ 
+ ---
+ 
++## 11. Où trouver la documentation
++
++Tous les liens ci-dessous ont été relevés par recherche au moment de la
++rédaction ; vérifie leur validité avant de t'y fier, et préfère toujours la
++**dernière révision** d'une spécification. Quand un lien précis n'a pas pu être
++confirmé, le texte le dit.
++
++### 11.1 Où apprendre à faire un pilote de système
++
++| Ressource | Usage |
++| --- | --- |
++| [OSDev wiki — Technical Specifications](https://wiki.osdev.org/Technical_Specifications) | Index de spécifications (PCI, AHCI, xHCI, ACPI, SMBIOS, UEFI, Multiboot) avec des liens directs |
++| [OSDev wiki — Common Devices](https://osdev.wiki/wiki/Category:Common_Devices) | Pages explicatives par appareil, pas à pas |
++| [OSDev wiki — Accelerated Graphic Cards](https://wiki.osdev.org/GPU) | État de la documentation des GPU |
++| [Linux Device Drivers, 3e éd. (LWN)](https://lwn.net/Kernel/LDD3/) | Livre en ligne sur la structure d'un pilote (écrit pour Linux : les idées valent, pas l'API) |
++| [Documentation PCI du noyau Linux](https://docs.kernel.org/PCI/index.html) | Comment Linux voit le PCI/PCIe |
++| [Manuel seL4](https://www.sel4.systems/Info/Docs/seL4-manual-latest.pdf) | Capabilities, IRQ, ports d'E/S, mémoire de périphérique : la moitié système |
++| [Page seL4 sur IA32/x86](https://docs.sel4.systems/Hardware/IA32) | Démarrage et console sur PC réel (voir §12) |
++| [seL4 Device Driver Framework (sDDF)](https://github.com/au-ts/sddf) et [sa conception](https://trustworthy.systems/projects/drivers/sddf-design.pdf) | Comment des pilotes se découpent et communiquent sous seL4 (classes réseau, bloc, série, I2C, audio). Le projet se décrit comme « largement expérimental » et s'appuie sur Microkit ; ton Core n'utilise pas Microkit, donc c'est surtout une source d'idées de conception. Sa licence n'a pas pu être confirmée ici |
++
++### 11.2 Spécifications officielles (la source de vérité du « quoi écrire »)
++
++| Matériel | Document |
++| --- | --- |
++| PC, processeur | [Intel SDM](https://www.intel.com/content/www/us/en/support/articles/000006715/processors.html) ; [AMD APM, volume 1](https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24592.pdf) (les autres volumes sont sur le site d'AMD) |
++| PCI, PCIe | Les spécifications officielles sont publiées par PCI-SIG (l'accès complet peut être réservé aux membres : à vérifier). Des copies de versions anciennes (PCI 2.2, PCIe 2.0) sont listées par [OSDev](https://wiki.osdev.org/Technical_Specifications) |
++| Disque SATA (AHCI) | [Intel, AHCI 1.3.1](https://www.intel.com/content/www/us/en/io/serial-ata/serial-ata-ahci-spec-rev1-3-1.html) |
++| SSD NVMe | [NVM Express — spécification de base](https://nvmexpress.org/specification/nvm-express-base-specification/) ; [vue d'ensemble](https://nvmexpress.org/specifications/) |
++| USB 3 (xHCI) | [Intel, xHCI](https://www.intel.com/content/www/us/en/content-details/625472/extensible-host-controller-interface-for-universal-serial-bus-xhci-requirements-specification.html). Les spécifications USB et les classes (HID, stockage) sont sur usb.org (lien précis non confirmé ici) |
++| Appareils virtuels (QEMU, VM) | [virtio 1.3 (OASIS)](https://docs.oasis-open.org/virtio/virtio/v1.3/virtio-v1.3.html) |
++| Audio | [Intel, High Definition Audio 1.0a](https://www-ssl.intel.com/content/www/us/en/standards/high-definition-audio-specification.html) |
++| ACPI | [ACPI 6.6 (UEFI Forum)](https://uefi.org/specs/ACPI/6.6/) |
++| UEFI (dont le framebuffer GOP) | [UEFI 2.11](https://uefi.org/specs/UEFI/2.11/) |
++| SMBIOS | [DMTF DSP0134](https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_3.7.1.pdf) |
++| Démarrage Multiboot2 | [Spécification Multiboot2 (GNU)](https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html) |
++| PS/2 (clavier, souris) | Pas de spécification officielle récente ; les pages « Common Devices » d'OSDev sont la référence usuelle |
++
++### 11.3 Documentation GPU : ce qui existe vraiment
++
++| Fabricant | Ce qui est publié | Limites |
++| --- | --- | --- |
++| **Intel** | [Programmer's Reference Manuals](https://intel.com/content/www/us/en/docs/graphics-for-linux/developer-reference) des GPU intégrés, d'Iron Lake (2010) à Alchemist (2023), avec les chipsets associés | Les générations les plus récentes ne sont pas couvertes |
++| **AMD** | [Documentation des jeux d'instructions](https://gpuopen.com/amd-isa-documentation) (RDNA, Vega…) | Ce sont surtout les instructions des shaders. À ma connaissance, pour l'initialisation matérielle (affichage, files de commandes), la source la plus complète est le code du pilote `amdgpu` de Linux : à confirmer avant de planifier |
++| **NVIDIA** | [`open-gpu-doc`](https://github.com/NVIDIA/open-gpu-doc) (en-têtes de classes) et [`open-gpu-kernel-modules`](https://github.com/NVIDIA/open-gpu-kernel-modules) (pilote noyau pour Turing et suivants, double licence MIT/GPLv2 selon la [documentation NVIDIA](https://download.nvidia.com/XFree86/Linux-x86_64/595.84/README/kernel_open.html)) | La documentation officielle est partielle ; le projet [envytools](https://envytools.readthedocs.io/en/latest/hw/index.html) documente par rétro-ingénierie les générations Maxwell et antérieures. Le firmware GSP reste un blob (voir §8) |
++
++Pour ton premier GPU, ne vise pas l'accélération : le framebuffer (§7) suffit.
++
++### 11.4 Pilotes à lire comme référence
++
++| Famille | Où lire | Licence (à confirmer fichier par fichier) |
++| --- | --- | --- |
++| AHCI | [FreeBSD `sys/dev/ahci`](https://cgit.freebsd.org/src/log/sys/dev/ahci) ; [OpenBSD `ahci_pci.c`](https://src.rcs.uwaterloo.ca/xref/openbsd-src/sys/dev/pci/ahci_pci.c) | BSD |
++| NVMe | [NetBSD `nvme_pci.c`](https://nxr.netbsd.org/xref/src/sys/dev/pci/nvme_pci.c?r=1.2.2.4) (le chemin `sys/dev/nvme` de FreeBSD existe mais n'a pas été confirmé ici) | BSD |
++| xHCI (USB 3) | [NetBSD `xhci_pci.c`](https://nxr.netbsd.org/xref/src/sys/dev/pci/xhci_pci.c?r=1.26) ; [FreeBSD `xhci.c`](https://cgit.freebsd.org/src/log/sys/dev/usb/controller/xhci.c?ofs=50) | BSD |
++| virtio | Le texte de la spécification virtio contient la séquence d'initialisation complète | — |
++| Réseau, audio, Wi-Fi, GPU | Dossiers `sys/dev` des systèmes BSD ; le noyau Linux pour les cas absents des BSD (GPL) | Variable |
++
++Les sites ci-dessus sont des navigateurs de code en ligne : choisis une révision
++précise et note-la dans `THIRD_PARTY_DRIVERS.md`.
++
++---
++
++## 12. Tester sur un PC réel : protocole
++
++Tu veux éviter toute erreur sur le PC réel. L'objectif réaliste n'est pas
++« zéro erreur » (les blocages sont normaux, même pour des systèmes établis lors
++d'un premier démarrage sur une nouvelle machine) mais **des erreurs sans
++conséquence et faciles à diagnostiquer**. Le protocole ci-dessous vise ça.
++
++### 12.1 Ce qui est connu sur seL4 et les PC réels
++
++Relevé dans la [page IA32 de seL4](https://docs.sel4.systems/Hardware/IA32) et
++dans une [discussion de la communauté](https://sel4.discourse.group/t/running-sel4-on-bare-metal-x86-64-pc/934) :
++
++- Sur matériel réel, la sortie de debug passe par un **port série** : la page
++  prévoit un câble série et ne mentionne pas la sortie VGA.
++- La page documente des démarrages par **PXE** (réseau) ou par clé USB avec
++  syslinux, en mode BIOS. Elle ne parle pas d'UEFI.
++- Un utilisateur rapporte, sur une machine Xeon avec GRUB et Multiboot2 (BIOS,
++  puis un essai en UEFI), un **écran noir et aucune sortie série**. La seule
++  piste proposée dans le fil est le PXE ; le fil ne confirme pas de méthode
++  fonctionnelle.
++- Dans le tableau de plateformes de cette page, PC99 est marquée comme
++  plateforme de simulation, et les lignes virtualisation et IOMMU sont vides.
++  La page paraît ancienne : confirme avec la version de seL4 que tu utilises.
++
++**Conséquence.** Le démarrage sur PC réel est le point le moins documenté de
++ton plan, et il peut échouer **sans rien afficher**. Compte là-dessus plutôt que
++de le découvrir sur la machine.
++
++### 12.2 Conditions à remplir avant de brancher la clé sur un PC
++
++1. **QEMU : la détection est correcte et stable.** L'initial task affiche la
++   liste PCI attendue sur `-machine q35` **et** sur `-machine pc`, avec
++   plusieurs quantités de mémoire et de cœurs (`-m`, `-smp`), sur plusieurs
++   lancements de suite. `qemu-system-x86_64 -device help` liste les appareils
++   émulables.
++2. **Tu peux voir ce qui se passe sans port série.** La plupart des portables
++   n'ont pas de port série. Le BootInfo fournit les informations du framebuffer
++   (`SEL4_BOOTINFO_HEADER_X86_FRAMEBUFFER`) : fais d'abord dessiner une console
++   texte sur ce framebuffer par l'initial task. Limite : elle ne montre que ce
++   qui est écrit **après** le démarrage de l'initial task. Si rien ne s'affiche,
++   tu ne sauras pas si le noyau seL4 ou ton initial task est en cause. Un port
++   série (une machine de bureau avec un connecteur série, ou une machine avec
++   console série intégrée) règle ce point ; vérifie le matériel de ta machine
++   avant de compter dessus.
++3. **L'image n'écrit nulle part.** Aujourd'hui, BAURA n'a **aucun pilote de
++   stockage** (voir `DEVICE_DRIVER_STATUS.md`) : il ne peut donc pas écrire sur
++   un disque. Garde cette propriété pour les premiers essais.
++
++### 12.3 Règles de sécurité
++
++1. **Machine d'essai dédiée** si tu en as une (ancien PC de bureau, idéalement
++   avec le disque interne débranché). Sinon, **sauvegarde complète** de tes
++   données avant.
++2. **Démarre depuis une clé USB**, jamais depuis le disque interne.
++3. **Aucune écriture sur un disque** tant qu'un pilote de stockage n'a pas été
++   validé sous QEMU. Le premier pilote de stockage essayé sur PC réel est
++   **en lecture seule** (il refuse toute commande d'écriture) et vise un disque
++   de test, pas ton disque système.
++4. **Ne jamais écrire** dans le flash du firmware (BIOS/UEFI), le contrôleur
++   embarqué, les registres d'alimentation et thermiques, ni dans les registres
++   spécifiques du processeur (MSR), sans spécification et sans test d'abord
++   sous QEMU. C'est la seule catégorie d'erreur qui puisse abîmer la machine
++   elle-même ; une erreur ordinaire de pilote bloque la machine ou corrompt des
++   données écrites, ce qui se règle par un arrêt forcé.
++5. **Écritures de configuration PCI** (registre de commande, mesure des BAR) :
++   d'abord sous QEMU. Le backend actuel n'écrit sur les ports que pour
++   **sélectionner** le registre lu (`0xCF8`) et ne modifie aucune configuration
++   d'appareil. Sur PC réel, ajoute ces écritures dans une étape distincte, un
++   appareil à la fois.
++6. **Réglages du firmware** : ne change que l'ordre de démarrage. Un PC avec
++   Secure Boot actif peut refuser un chargeur non signé : à vérifier sur ta
++   machine, et note les réglages d'origine avant de les modifier.
++7. **Sortie de secours** : arrêt forcé par le bouton, puis retrait de la clé.
++   Sans écriture sur disque, la machine redémarre normalement sous son système.
++
++### 12.4 Progression par étages
++
++Ne passe à l'étage suivant que si le précédent a réussi sur **cette** machine.
++
++| Étage | Contenu | Réussite |
++| --- | --- | --- |
++| 0 | Le noyau et l'initial task démarrent | Le message `BAURA OS Core ready` est visible (framebuffer ou série) |
++| 1 | Lecture du BootInfo : RAM, framebuffer, RSDP | Les valeurs affichées correspondent à la machine |
++| 2 | PCI en **lecture seule** | Chaque ligne de `lspci -nn` de la référence Linux live (§4.5) est dans la liste de BAURA |
++| 3 | Tables ACPI en lecture seule | MADT et MCFG lisibles ; nombre de cœurs correct |
++| 4 | Premier pilote simple (framebuffer, PS/2) | Fonctionne sans blocage |
++| 5 | Stockage en lecture seule sur un disque de test | Lecture d'un secteur dont tu connais le contenu |
++
++À chaque étape à risque, **affiche une ligne avant de l'exécuter** (par exemple
++`STAGE 2: reading bus 0 slot 3`). Si la machine se bloque, la dernière ligne
++affichée te dit où.
++
++### 12.5 Ce que ce protocole ne garantit pas
++
++Aucune méthode ne garantit l'absence d'erreur sur un matériel qu'on n'a pas
++encore vu. Il garantit seulement que tu t'es donné les moyens de voir ce qui se
++passe et que le pire résultat probable est un blocage corrigé par un arrêt
++forcé, pas une perte de données.
++
++---
++
+ ## Annexe : hors périmètre pour l'instant
+ 
+ - Support ARM64/Snapdragon (chemin séparé : ACPI/device-tree + autres
+-- 
+2.43.0
+

@@ -1,0 +1,13 @@
+[package]
+name = "baura-ffi"
+version.workspace = true
+edition.workspace = true
+[lib]
+name = "baura_ui_services"
+crate-type = ["staticlib", "rlib"]
+[dependencies]
+baura-prefs = { path = "../baura-prefs" }
+baura-sysmon = { path = "../baura-sysmon" }
+baura-icons = { path = "../baura-icons" }
+baura-shell = { path = "../baura-shell" }
+baura-i18n = { path = "../baura-i18n" }

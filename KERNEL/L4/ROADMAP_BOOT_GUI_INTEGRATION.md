@@ -55,10 +55,12 @@ signifie pas que le Core remplace seL4 ou peut s’accorder des droits matériel
   vérifiée ; le mode actuel est un build de développement et ne revendique pas
   de vérification formelle.
 - Le contrat Core garde le BootInfo opaque et vérifie l’entrée via un
-  validateur fourni par la plateforme. `BOOT/SEL4/initial_task.c` apporte un
-  premier adaptateur qui vérifie les champs fixes et régions de slots, mais
-  n'analyse pas encore les chunks variables (dont les métadonnées framebuffer)
-  et n'a pas été compilé ni démarré avec le bon sous-module.
+  validateur fourni par la plateforme. `BOOT/SEL4/initial_task.c` analyse
+  désormais les chunks variables du BootInfo (notamment
+  `SEL4_BOOTINFO_HEADER_X86_FRAMEBUFFER`), extrait la configuration
+  vidéo (résolution, pitch, adresse physique, bpp), et connecte le
+  rendu du splash de boot autonome (`BOOT/FIRMWARE/FRAMEBUFFER/baura_boot_splash.c`)
+  au hook `start_graphical_service` de `BauraCorePlatform`.
 - Un hook GUI optionnel, compatible avec l’ancienne taille de structure, a été
   ajouté au contrat de plateforme Core. Le pont GUI peut enregistrer le
   runtime dans le gestionnaire de services. Ce hook ne fournit pas les

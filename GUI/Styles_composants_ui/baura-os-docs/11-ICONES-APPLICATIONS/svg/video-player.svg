@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="#EA580C"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#FFEDD5" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M16 12H48A8 8 0 0 1 56 20V40A8 8 0 0 1 48 48H16A8 8 0 0 1 8 40V20A8 8 0 0 1 16 12Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M16 12H48A8 8 0 0 1 56 20V40A8 8 0 0 1 48 48H16A8 8 0 0 1 8 40V20A8 8 0 0 1 16 12Z" fill="url(#g1)"/>
+<path d="M27 21L27 39L42 30Z" fill="#EA580C"/>
+<path d="M14 54L40 54" fill="none" stroke="#FFFFFF" stroke-opacity="0.60" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M45.2 54A2.8 2.8 0 1 1 50.8 54A2.8 2.8 0 1 1 45.2 54Z" fill="#E5C34A"/>
+</svg>

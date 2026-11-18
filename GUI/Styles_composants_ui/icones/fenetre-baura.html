@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAURA OS – Fenêtre</title>
+<link rel="icon" href="icones/favicon.svg" type="image/svg+xml">
+<style>
+  :root{
+    --indigo:#4F46E5; --violet:#8B5CF6; --lavande:#C4B5FD; --or:#AB8E18; --nuit:#0F0B2E;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{font-family:"Inter","Segoe UI",system-ui,sans-serif;overflow:hidden;position:relative;
+    background:radial-gradient(1200px 700px at 20% 0%,#ece9ff 0%,#f4f2fb 45%,#e9edf2 100%)}
+  .window{position:absolute;left:80px;top:60px;width:560px;height:340px;background:#fff;
+    border:1px solid #ddd8f3;border-radius:14px;box-shadow:0 14px 36px rgba(79,70,229,.18);
+    overflow:hidden;display:flex;flex-direction:column;
+    transition:width .25s ease,height .25s ease,left .25s ease,top .25s ease,opacity .2s ease,transform .2s ease,border-radius .25s ease}
+  .window.dragging{transition:none}
+  .titlebar{display:flex;align-items:center;justify-content:space-between;padding:0 14px 0 16px;height:50px;flex:none;
+    background:#faf9ff;border-bottom:1px solid #ebe8f8;cursor:grab;user-select:none}
+  .titlebar:active{cursor:grabbing}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand img{height:24px;width:auto;display:block}
+  .title{font-weight:600;font-size:14px;color:var(--nuit)}
+  .controls{display:flex;gap:8px}
+  .btn{width:26px;height:26px;border:0;border-radius:8px;display:grid;place-items:center;cursor:pointer;
+    transition:transform .12s ease,filter .12s ease}
+  .btn:hover{transform:translateY(-1px);filter:brightness(.96)}
+  .btn:active{transform:scale(.92)}
+  .btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .min{background:#e8e6fd;color:var(--indigo)}
+  .max{background:#f1ecfe;color:var(--violet)}
+  .close{background:#f7efcf;color:#7d6610}
+  .content{flex:1;padding:24px;color:#4a4670;overflow:auto;transition:opacity .15s ease}
+  .window.minimized{height:51px!important}
+  .window.minimized .content{opacity:0}
+  .window.maximized{left:0!important;top:0!important;width:100%!important;height:100%!important;border-radius:0}
+  .window.maximized .titlebar{cursor:default}
+  .window.closed{opacity:0;transform:scale(.94);pointer-events:none}
+  .reopen{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 22px;border:0;border-radius:12px;
+    background:var(--indigo);color:#fff;font-size:15px;font-weight:600;cursor:pointer;display:none;
+    box-shadow:0 8px 20px rgba(79,70,229,.35)}
+  .reopen.visible{display:block}
+</style>
+</head>
+<body>
+<div class="window" id="win">
+  <div class="titlebar" id="bar">
+    <div class="brand">
+      <img src="logos/baura-symbole-couleur.svg" alt="BAURA">
+      <span class="title">BAURA OS</span>
+    </div>
+    <div class="controls">
+      <button class="btn min" id="btnMin" title="Réduire" aria-label="Réduire"><svg viewBox="0 0 16 16"><path d="M4 8h8"/></svg></button>
+      <button class="btn max" id="btnMax" title="Agrandir" aria-label="Agrandir"><svg id="iconMax" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4.5"/></svg></button>
+      <button class="btn close" id="btnClose" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></button>
+    </div>
+  </div>
+  <div class="content">Contenu de la fenêtre. Glisse la barre de titre pour la déplacer, double-clique dessus pour agrandir / restaurer.</div>
+</div>
+<button class="reopen" id="reopen">Rouvrir la fenêtre</button>
+<script>
+  const win=document.getElementById('win'),bar=document.getElementById('bar'),btnMin=document.getElementById('btnMin'),
+    btnMax=document.getElementById('btnMax'),btnClose=document.getElementById('btnClose'),
+    iconMax=document.getElementById('iconMax'),reopen=document.getElementById('reopen');
+  const ICON_MAX='<circle cx="8" cy="8" r="4.5"/>',ICON_RESTORE='<circle cx="8" cy="8" r="5.2"/><circle cx="8" cy="8" r="2.2"/>';
+  btnMin.addEventListener('click',()=>{win.classList.toggle('minimized');btnMin.title=win.classList.contains('minimized')?'Restaurer':'Réduire'});
+  function toggleMax(){win.classList.remove('minimized');const m=win.classList.toggle('maximized');
+    iconMax.innerHTML=m?ICON_RESTORE:ICON_MAX;btnMax.title=m?'Restaurer':'Agrandir'}
+  btnMax.addEventListener('click',toggleMax);
+  bar.addEventListener('dblclick',e=>{if(!e.target.closest('.controls'))toggleMax()});
+  btnClose.addEventListener('click',()=>{win.classList.add('closed');setTimeout(()=>reopen.classList.add('visible'),200)});
+  reopen.addEventListener('click',()=>{reopen.classList.remove('visible');win.classList.remove('closed')});
+  let drag=null;
+  bar.addEventListener('pointerdown',e=>{if(e.target.closest('.controls')||win.classList.contains('maximized'))return;
+    drag={dx:e.clientX-win.offsetLeft,dy:e.clientY-win.offsetTop};win.classList.add('dragging');bar.setPointerCapture(e.pointerId)});
+  bar.addEventListener('pointermove',e=>{if(!drag)return;
+    win.style.left=Math.min(Math.max(0,e.clientX-drag.dx),innerWidth-win.offsetWidth)+'px';
+    win.style.top=Math.min(Math.max(0,e.clientY-drag.dy),innerHeight-51)+'px'});
+  const stop=()=>{drag=null;win.classList.remove('dragging')};
+  bar.addEventListener('pointerup',stop);bar.addEventListener('pointercancel',stop);
+</script>
+</body>
+</html>

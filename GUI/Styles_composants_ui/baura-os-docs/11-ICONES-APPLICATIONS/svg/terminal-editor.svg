@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C46B8"/><stop offset="1" stop-color="#1E1B4B"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A2570" stop-opacity="1.00"/><stop offset="1" stop-color="#0F0B2E" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M17 11H47A8 8 0 0 1 55 19V45A8 8 0 0 1 47 53H17A8 8 0 0 1 9 45V19A8 8 0 0 1 17 11Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M17 11H47A8 8 0 0 1 55 19V45A8 8 0 0 1 47 53H17A8 8 0 0 1 9 45V19A8 8 0 0 1 17 11Z" fill="url(#g1)"/>
+<path d="M15 17H16A1 1 0 0 1 17 18V19A1 1 0 0 1 16 20H15A1 1 0 0 1 14 19V18A1 1 0 0 1 15 17Z" fill="#FFFFFF" fill-opacity="0.35"/>
+<path d="M15 23H16A1 1 0 0 1 17 24V25A1 1 0 0 1 16 26H15A1 1 0 0 1 14 25V24A1 1 0 0 1 15 23Z" fill="#FFFFFF" fill-opacity="0.35"/>
+<path d="M15 29H16A1 1 0 0 1 17 30V31A1 1 0 0 1 16 32H15A1 1 0 0 1 14 31V30A1 1 0 0 1 15 29Z" fill="#FFFFFF" fill-opacity="0.35"/>
+<path d="M15 35H16A1 1 0 0 1 17 36V37A1 1 0 0 1 16 38H15A1 1 0 0 1 14 37V36A1 1 0 0 1 15 35Z" fill="#FFFFFF" fill-opacity="0.35"/>
+<path d="M15 41H16A1 1 0 0 1 17 42V43A1 1 0 0 1 16 44H15A1 1 0 0 1 14 43V42A1 1 0 0 1 15 41Z" fill="#FFFFFF" fill-opacity="0.35"/>
+<path d="M21 18.5L36 18.5" fill="none" stroke="#A5B4FC" stroke-opacity="0.90" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M21 24.5L42 24.5" fill="none" stroke="#5EEAD4" stroke-opacity="0.90" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M21 30.5L32 30.5" fill="none" stroke="#A5B4FC" stroke-opacity="0.90" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M22.2 35H25.8A1.2 1.2 0 0 1 27 36.2V42.8A1.2 1.2 0 0 1 25.8 44H22.2A1.2 1.2 0 0 1 21 42.8V36.2A1.2 1.2 0 0 1 22.2 35Z" fill="#E5C34A"/>
+<path d="M12.5 46H51.5A3.5 3.5 0 0 1 55 49.5V49.5A3.5 3.5 0 0 1 51.5 53H12.5A3.5 3.5 0 0 1 9 49.5V49.5A3.5 3.5 0 0 1 12.5 46Z" fill="#5EEAD4" fill-opacity="0.35"/>
+</svg>

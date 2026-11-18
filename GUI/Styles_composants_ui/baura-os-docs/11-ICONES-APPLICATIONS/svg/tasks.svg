@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0F766E"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#CCFBF1" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M17 11H47A7 7 0 0 1 54 18V46A7 7 0 0 1 47 53H17A7 7 0 0 1 10 46V18A7 7 0 0 1 17 11Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M17 11H47A7 7 0 0 1 54 18V46A7 7 0 0 1 47 53H17A7 7 0 0 1 10 46V18A7 7 0 0 1 17 11Z" fill="url(#g1)"/>
+<path d="M19 18H22A2 2 0 0 1 24 20V23A2 2 0 0 1 22 25H19A2 2 0 0 1 17 23V20A2 2 0 0 1 19 18Z" fill="#0F766E"/>
+<path d="M19 29H22A2 2 0 0 1 24 31V34A2 2 0 0 1 22 36H19A2 2 0 0 1 17 34V31A2 2 0 0 1 19 29Z" fill="#0F766E" fill-opacity="0.85"/>
+<path d="M19 40H22A2 2 0 0 1 24 42V45A2 2 0 0 1 22 47H19A2 2 0 0 1 17 45V42A2 2 0 0 1 19 40Z" fill="#0F766E" fill-opacity="0.85"/>
+<path d="M18.5 21.5l2 2 3-4" fill="none" stroke="#FFFFFF" stroke-opacity="1.00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29 21.5L46 21.5" fill="none" stroke="#0F766E" stroke-opacity="0.80" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29 32.5L42 32.5" fill="none" stroke="#0F766E" stroke-opacity="0.60" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29 43.5L44 43.5" fill="none" stroke="#0F766E" stroke-opacity="0.40" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M46.6 47A2.4 2.4 0 1 1 51.4 47A2.4 2.4 0 1 1 46.6 47Z" fill="#E5C34A"/>
+</svg>

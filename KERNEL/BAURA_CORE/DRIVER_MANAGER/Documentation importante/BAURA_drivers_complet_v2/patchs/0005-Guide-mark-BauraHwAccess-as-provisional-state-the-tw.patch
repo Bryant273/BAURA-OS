@@ -1,0 +1,53 @@
+From b7e10fd5aeb6544820c2c14f8a500e0a001a3c5a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 23 Oct 2026 10:47:19 +0000
+Subject: [PATCH 5/5] Guide: mark BauraHwAccess as provisional, state the two
+ layers below a driver
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PNWzsy9sebpebHVW9npSuq
+---
+ KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md | 20 ++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+index 63f97ff..2a5ad9f 100644
+--- a/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
++++ b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+@@ -220,6 +220,24 @@ typedef struct {
+ } BauraHwAccess;
+ ```
+ 
++**Cette interface est provisoire.** Elle n'existe pas dans le Core et aucun
++pilote réel ne l'a encore essayée. La version compilée et testée sur hôte est
++[`DRIVER_DOCS/examples/driver_contract.h`](./DRIVER_DOCS/examples/driver_contract.h)
++(elle diffère de l'extrait ci-dessus : accès aux ports `io_in/io_out`,
++`map_bar`, `irq_ack`) ; en cas de divergence, c'est celle-là qui fait foi.
++Attends-toi à la modifier après le premier pilote (par exemple lectures
++8/16 bits, barrières mémoire, mapping de plusieurs BAR).
++
++**Deux couches se trouvent sous le pilote, pas une :**
++
++- **Le Core BAURA** : les contrats de classe auxquels le pilote branche ses
++  callbacks (volume, réseau, entrée). Ils ont des manques, listés dans
++  [`DRIVER_DOCS/04_INTERFACES_DE_CLASSE.md`](./DRIVER_DOCS/04_INTERFACES_DE_CLASSE.md).
++- **seL4** : il fournit les capabilities réelles (mémoire device, IRQ, ports).
++  Seule la moitié système (le remplissage de `BauraHwAccess`) en dépend ; la
++  logique du pilote n'en dépend pas, donc un changement de noyau ne la touche
++  pas.
++
+ C'est le schéma déjà utilisé pour le PCI (`BauraPciPortIo` dans
+ `BOOT/SEL4/pci_backend.h`) : la logique est dans `pci_backend.c`, l'accès seL4
+ dans `pci_backend_sel4.c`, et les tests simulent un hôte PCI.
+@@ -237,7 +255,7 @@ Procédure pour chaque nouveau pilote :
+ 5. Écrire la moitié système (`BauraHwAccess` pour seL4), puis tester sous QEMU.
+ 6. Seulement ensuite, essayer sur PC réel (§12).
+ 
+-**S'inspirer sans copier.** Consigner dans `THIRD_PARTY_DRIVERS.md` (§8.3) chaque
++**S'inspirer sans copier.** Consigner dans [`DRIVER_DOCS/THIRD_PARTY_DRIVERS.md`](./DRIVER_DOCS/THIRD_PARTY_DRIVERS.md) (§8.3) chaque
+ pilote **consulté**, même si aucune ligne n'est reprise : origine, licence,
+ version. En cas de doute sur ce qui a été repris, ce registre permet de
+ retrouver la source. Ce document n'est pas un avis juridique.
+-- 
+2.43.0
+

@@ -1,0 +1,618 @@
+From 3522e229614044704f08c0dee83ee0c1c75e464d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Fri, 23 Oct 2026 09:52:18 +0000
+Subject: [PATCH 4/5] Add PCI config write path, BAR sizing and untyped lookup
+ with host tests
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PNWzsy9sebpebHVW9npSuq
+---
+ BOOT/SEL4/pci_backend.c                       |  15 ++
+ BOOT/SEL4/pci_backend.h                       |  10 +
+ BOOT/SEL4/pci_bar.c                           | 142 +++++++++++++
+ BOOT/SEL4/pci_bar.h                           |  72 +++++++
+ BOOT/tests/pci_bar_test.c                     | 186 ++++++++++++++++++
+ KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md     |   2 +-
+ KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md |   2 +-
+ .../DRIVER_DOCS/09_BAR_ET_MAPPING.md          |  65 ++++++
+ KERNEL/BAURA_CORE/DRIVER_DOCS/README.md       |   1 +
+ Makefile                                      |   5 +
+ 10 files changed, 498 insertions(+), 2 deletions(-)
+ create mode 100644 BOOT/SEL4/pci_bar.c
+ create mode 100644 BOOT/SEL4/pci_bar.h
+ create mode 100644 BOOT/tests/pci_bar_test.c
+ create mode 100644 KERNEL/BAURA_CORE/DRIVER_DOCS/09_BAR_ET_MAPPING.md
+
+diff --git a/BOOT/SEL4/pci_backend.c b/BOOT/SEL4/pci_backend.c
+index c559b3d..031ff7f 100644
+--- a/BOOT/SEL4/pci_backend.c
++++ b/BOOT/SEL4/pci_backend.c
+@@ -35,6 +35,21 @@ int baura_pci_port_config_read(uint8_t bus, uint8_t slot, uint8_t function,
+     return 1;
+ }
+ 
++int baura_pci_port_config_write(uint8_t bus, uint8_t slot, uint8_t function,
++                                uint8_t offset, uint32_t value, void *context) {
++    BauraPciPortBackend *backend = (BauraPciPortBackend *)context;
++    int ok;
++    if (backend == 0 || backend->io.in32 == 0 || backend->io.out32 == 0) return 0;
++    if (slot >= 32u || function >= 8u || (offset & 0x3u) != 0) return 0;
++    if (backend->busy) return 0;
++    backend->busy = 1;
++    ok = backend->io.out32(backend->io.context, BAURA_PCI_CONFIG_ADDRESS_PORT,
++                           baura_pci_config_address(bus, slot, function, offset)) == BAURA_OK &&
++         backend->io.out32(backend->io.context, BAURA_PCI_CONFIG_DATA_PORT, value) == BAURA_OK;
++    backend->busy = 0;
++    return ok;
++}
++
+ BauraStatus baura_pci_port_backend_install(BauraPciPortBackend *backend) {
+     if (backend == 0 || backend->io.in32 == 0 || backend->io.out32 == 0)
+         return BAURA_ERR_INVALID_ARGUMENT;
+diff --git a/BOOT/SEL4/pci_backend.h b/BOOT/SEL4/pci_backend.h
+index f828387..3516136 100644
+--- a/BOOT/SEL4/pci_backend.h
++++ b/BOOT/SEL4/pci_backend.h
+@@ -53,6 +53,16 @@ BauraStatus baura_pci_port_backend_init(BauraPciPortBackend *backend, const Baur
+ int baura_pci_port_config_read(uint8_t bus, uint8_t slot, uint8_t function,
+                                uint8_t offset, uint32_t *value, void *context);
+ 
++/*
++ * Dword configuration write, same validation and failure rules as the read.
++ * Returns 1 on success, 0 on failure. Only the BAR-sizing code (pci_bar.c)
++ * should use it; drivers never receive this function (see
++ * DRIVER_DOCS/05_MODELE_DE_SECURITE.md). The data port 0xCFC is inside the
++ * granted 0xCF8-0xCFF range, so no extra capability is needed.
++ */
++int baura_pci_port_config_write(uint8_t bus, uint8_t slot, uint8_t function,
++                                uint8_t offset, uint32_t value, void *context);
++
+ /* Installs the backend as the Core's PCI reader. The backend must outlive use. */
+ BauraStatus baura_pci_port_backend_install(BauraPciPortBackend *backend);
+ 
+diff --git a/BOOT/SEL4/pci_bar.c b/BOOT/SEL4/pci_bar.c
+new file mode 100644
+index 0000000..1cd13b8
+--- /dev/null
++++ b/BOOT/SEL4/pci_bar.c
+@@ -0,0 +1,142 @@
++#include "pci_bar.h"
++
++#define CFG_ID 0x00u
++#define CFG_COMMAND 0x04u
++#define CFG_HEADER 0x0Cu
++#define CFG_BAR0 0x10u
++#define CMD_DECODE_MASK 0x0003u /* I/O space (bit 0) and memory space (bit 1) */
++
++typedef struct {
++    const BauraPciCfgOps *ops;
++    uint8_t bus, slot, function;
++} Fn;
++
++static int rd(const Fn *f, uint8_t off, uint32_t *v) {
++    return f->ops->read(f->bus, f->slot, f->function, off, v, f->ops->context);
++}
++static int wr(const Fn *f, uint8_t off, uint32_t v) {
++    return f->ops->write(f->bus, f->slot, f->function, off, v, f->ops->context);
++}
++/* Restoring original values matters more than anything else here, so a failed
++ * restore is retried once before it is reported. */
++static int wr_restore(const Fn *f, uint8_t off, uint32_t v) {
++    return wr(f, off, v) || wr(f, off, v);
++}
++
++/* Writes all ones to one BAR dword, reads the result, then restores `orig`.
++ * Returns 1 only if every access succeeded; the restore is attempted anyway. */
++static int probe_dword(const Fn *f, uint8_t off, uint32_t orig, uint32_t *mask) {
++    int ok = wr(f, off, 0xFFFFFFFFu);
++    ok = ok && rd(f, off, mask);
++    if (!wr_restore(f, off, orig)) ok = 0;
++    return ok;
++}
++
++BauraStatus baura_pci_bar_probe(const BauraPciCfgOps *ops, uint8_t bus, uint8_t slot,
++                                uint8_t function, BauraPciBar bars[6]) {
++    Fn f;
++    uint32_t id, header, command_dword, orig[6], i;
++    BauraStatus status = BAURA_OK;
++    int restored_command = 0;
++
++    if (ops == 0 || ops->read == 0 || ops->write == 0 || bars == 0 ||
++        slot >= 32u || function >= 8u)
++        return BAURA_ERR_INVALID_ARGUMENT;
++    f.ops = ops; f.bus = bus; f.slot = slot; f.function = function;
++    for (i = 0; i < 6u; ++i) {
++        bars[i].kind = BAURA_BAR_NONE; bars[i].index = (uint8_t)i;
++        bars[i].prefetchable = 0; bars[i].base = 0; bars[i].size = 0;
++    }
++
++    if (!rd(&f, CFG_ID, &id) || !rd(&f, CFG_HEADER, &header) ||
++        !rd(&f, CFG_COMMAND, &command_dword))
++        return BAURA_ERR_IO;
++    if ((id & 0xFFFFu) == 0xFFFFu) return BAURA_ERR_INVALID_STATE; /* absent */
++    if (((header >> 16) & 0x7Fu) != 0) return BAURA_ERR_INVALID_STATE; /* not type 0 */
++    for (i = 0; i < 6u; ++i)
++        if (!rd(&f, (uint8_t)(CFG_BAR0 + 4u * i), &orig[i])) return BAURA_ERR_IO;
++
++    /* Bits 31:16 of this dword are the status register, whose bits are
++     * write-one-to-clear: always write the status half as zero. */
++    command_dword &= 0xFFFFu;
++    if (!wr(&f, CFG_COMMAND, command_dword & ~CMD_DECODE_MASK)) return BAURA_ERR_IO;
++
++    for (i = 0; i < 6u && status == BAURA_OK; ++i) {
++        uint8_t off = (uint8_t)(CFG_BAR0 + 4u * i);
++        uint32_t mask;
++        if (orig[i] & 1u) { /* I/O space */
++            if (!probe_dword(&f, off, orig[i], &mask)) { status = BAURA_ERR_IO; break; }
++            mask &= ~3u;
++            if (mask == 0) continue;
++            {
++                uint32_t size = (~mask + 1u);
++                if ((mask >> 16) == 0) size &= 0xFFFFu; /* 16-bit I/O BAR */
++                bars[i].kind = BAURA_BAR_IO;
++                bars[i].base = orig[i] & ~3u;
++                bars[i].size = size;
++            }
++        } else {
++            uint32_t type = (orig[i] >> 1) & 3u;
++            uint8_t prefetch = (uint8_t)((orig[i] >> 3) & 1u);
++            if (type == 3u) continue; /* reserved encoding: ignore */
++            if (type == 2u) {         /* 64-bit memory BAR */
++                uint32_t hi_orig, lo_mask, hi_mask;
++                if (i == 5u) { status = BAURA_ERR_INVALID_STATE; break; }
++                hi_orig = orig[i + 1u];
++                if (!probe_dword(&f, off, orig[i], &lo_mask) ||
++                    !probe_dword(&f, (uint8_t)(off + 4u), hi_orig, &hi_mask)) {
++                    status = BAURA_ERR_IO; break;
++                }
++                lo_mask &= ~0xFu;
++                if (lo_mask == 0 && hi_mask == 0) { ++i; continue; }
++                bars[i].kind = BAURA_BAR_MEM64;
++                bars[i].prefetchable = prefetch;
++                bars[i].base = ((uint64_t)hi_orig << 32) | (orig[i] & ~0xFu);
++                if (hi_mask == 0) {
++                    bars[i].size = (uint64_t)(uint32_t)(~lo_mask + 1u);
++                    if (bars[i].size == 0) bars[i].size = UINT64_C(1) << 32;
++                } else {
++                    uint64_t m = ((uint64_t)hi_mask << 32) | lo_mask;
++                    bars[i].size = ~m + 1u;
++                }
++                ++i; /* the upper dword belongs to this BAR; stays NONE */
++            } else {                  /* 32-bit memory BAR (type 1 = below 1 MiB) */
++                if (!probe_dword(&f, off, orig[i], &mask)) { status = BAURA_ERR_IO; break; }
++                mask &= ~0xFu;
++                if (mask == 0) continue;
++                bars[i].kind = BAURA_BAR_MEM32;
++                bars[i].prefetchable = prefetch;
++                bars[i].base = orig[i] & ~0xFu;
++                bars[i].size = (uint32_t)(~mask + 1u);
++            }
++        }
++    }
++
++    restored_command = wr_restore(&f, CFG_COMMAND, command_dword);
++    if (!restored_command && status == BAURA_OK) status = BAURA_ERR_IO;
++    if (status != BAURA_OK) {
++        for (i = 0; i < 6u; ++i) {
++            bars[i].kind = BAURA_BAR_NONE; bars[i].base = 0; bars[i].size = 0;
++            bars[i].prefetchable = 0;
++        }
++    }
++    return status;
++}
++
++int baura_untyped_find_device(const BauraUntypedDesc *list, uint32_t count,
++                              uint64_t base, uint64_t size) {
++    uint32_t i;
++    uint64_t end;
++    if (list == 0 || size == 0) return -1;
++    end = base + size;
++    if (end < base) return -1; /* wraps around */
++    for (i = 0; i < count; ++i) {
++        uint64_t ut_size, ut_end;
++        if (!list[i].is_device || list[i].size_bits >= 63u) continue;
++        ut_size = UINT64_C(1) << list[i].size_bits;
++        ut_end = list[i].paddr + ut_size;
++        if (ut_end < list[i].paddr) continue;
++        if (base >= list[i].paddr && end <= ut_end) return (int)i;
++    }
++    return -1;
++}
+diff --git a/BOOT/SEL4/pci_bar.h b/BOOT/SEL4/pci_bar.h
+new file mode 100644
+index 0000000..6accd2d
+--- /dev/null
++++ b/BOOT/SEL4/pci_bar.h
+@@ -0,0 +1,72 @@
++#ifndef BAURA_PCI_BAR_H
++#define BAURA_PCI_BAR_H
++
++/*
++ * PCI BAR sizing and untyped lookup. Portable: configuration access is
++ * injected, there is no seL4 dependency. Mapping the resulting range into an
++ * address space is NOT done here (see DRIVER_DOCS/09_BAR_ET_MAPPING.md).
++ *
++ * Sizing follows the usual PCI procedure: disable memory and I/O decoding in
++ * the command register, write all ones to the BAR, read it back, restore the
++ * BAR, restore the command register. Only header type 0 functions are sized.
++ * Sizing briefly disables decoding of the device: do not size a device the
++ * firmware or another agent is actively using (see the document above).
++ */
++
++#include <stdint.h>
++
++#include "../../KERNEL/BAURA_CORE/baura_core_types.h"
++
++typedef struct {
++    /* Return 1 on success, 0 on failure; offset is dword-aligned. */
++    int (*read)(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset,
++                uint32_t *value, void *context);
++    int (*write)(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset,
++                 uint32_t value, void *context);
++    void *context;
++} BauraPciCfgOps;
++
++typedef enum {
++    BAURA_BAR_NONE = 0,   /* not implemented, or the upper half of a 64-bit BAR */
++    BAURA_BAR_MEM32 = 1,
++    BAURA_BAR_MEM64 = 2,
++    BAURA_BAR_IO = 3
++} BauraBarKind;
++
++typedef struct {
++    BauraBarKind kind;
++    uint8_t index;          /* index of the (first) BAR dword, 0-5 */
++    uint8_t prefetchable;
++    uint64_t base;          /* as programmed by the firmware; 0 = unassigned */
++    uint64_t size;          /* bytes; 0 when kind is NONE */
++} BauraPciBar;
++
++/*
++ * Sizes the six BARs of a header-type-0 function and fills `bars` (6 entries,
++ * indexed by BAR dword; the upper dword of a 64-bit BAR is reported as NONE).
++ * On any configuration access failure it makes a best effort to restore the
++ * original BAR and command values and returns BAURA_ERR_IO. Returns
++ * BAURA_ERR_INVALID_ARGUMENT for null arguments, BAURA_ERR_INVALID_STATE for a
++ * header type other than 0 or an invalid 64-bit BAR in the last slot.
++ */
++BauraStatus baura_pci_bar_probe(const BauraPciCfgOps *ops, uint8_t bus, uint8_t slot,
++                                uint8_t function, BauraPciBar bars[6]);
++
++/* One entry of seL4_BootInfo.untypedList, flattened. */
++typedef struct {
++    uint64_t paddr;
++    uint8_t size_bits;
++    uint8_t is_device;
++} BauraUntypedDesc;
++
++/*
++ * Finds the device untyped that fully contains [base, base+size). Returns its
++ * index in `list` or -1. The range must be non-empty, not wrap around, and
++ * the untyped must be a device untyped. This only answers "which untyped",
++ * not how to carve it (objects inside an untyped are allocated in order; see
++ * the document).
++ */
++int baura_untyped_find_device(const BauraUntypedDesc *list, uint32_t count,
++                              uint64_t base, uint64_t size);
++
++#endif
+diff --git a/BOOT/tests/pci_bar_test.c b/BOOT/tests/pci_bar_test.c
+new file mode 100644
+index 0000000..1b72283
+--- /dev/null
++++ b/BOOT/tests/pci_bar_test.c
+@@ -0,0 +1,186 @@
++/*
++ * Host tests for BAR sizing and untyped lookup, plus the port-backend write.
++ * The fake device models BAR registers: bits below the size granularity read
++ * as zero after an all-ones write, flag bits are read-only, and the status
++ * half of the command dword is write-one-to-clear.
++ */
++#include <assert.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "../SEL4/pci_bar.h"
++#include "../SEL4/pci_backend.h"
++
++typedef struct {
++    uint32_t cfg[64];
++    uint32_t bar_mask[6];   /* writable bits of each BAR dword */
++    uint32_t bar_ro[6];     /* read-only flag bits */
++    uint32_t status;        /* status register (bits 31:16 of dword 1) */
++    unsigned writes;
++    int fail_write_after;   /* fail the Nth write (1-based); 0 = never */
++    int fail_all_reads;
++    int decode_was_enabled_during_sizing;
++} Dev;
++
++static int dev_read(uint8_t b, uint8_t s, uint8_t f, uint8_t off, uint32_t *v, void *c) {
++    Dev *d = c; (void)b; (void)s; (void)f;
++    if (d->fail_all_reads) return 0;
++    *v = d->cfg[off / 4u];
++    if (off == 4u) *v = (d->cfg[1] & 0xFFFFu) | (d->status << 16);
++    return 1;
++}
++
++static int dev_write(uint8_t b, uint8_t s, uint8_t f, uint8_t off, uint32_t v, void *c) {
++    Dev *d = c; (void)b; (void)s; (void)f;
++    ++d->writes;
++    if (d->fail_write_after && (int)d->writes == d->fail_write_after) return 0;
++    if (off == 4u) {
++        d->status &= ~(v >> 16);               /* write-one-to-clear */
++        d->cfg[1] = v & 0xFFFFu;
++    } else if (off >= 0x10u && off < 0x28u) {
++        unsigned i = (off - 0x10u) / 4u;
++        if (v == 0xFFFFFFFFu && (d->cfg[1] & 3u) != 0)
++            d->decode_was_enabled_during_sizing = 1;
++        d->cfg[off / 4u] = (v & d->bar_mask[i]) | d->bar_ro[i];
++    }
++    return 1;
++}
++
++static void dev_init(Dev *d) {
++    memset(d, 0, sizeof *d);
++    d->cfg[0] = 0x100e8086u;
++    d->cfg[1] = 0x0007u;       /* I/O, memory, bus master enabled */
++    d->status = 0x0210u;       /* some write-one-to-clear bits set */
++    d->cfg[3] = 0x00000000u;   /* header type 0 */
++}
++
++static BauraPciCfgOps ops_for(Dev *d) {
++    BauraPciCfgOps o; o.read = dev_read; o.write = dev_write; o.context = d; return o;
++}
++
++static void test_mem32_io_and_restore(void) {
++    Dev d; BauraPciCfgOps o; BauraPciBar bars[6];
++    dev_init(&d); o = ops_for(&d);
++    /* BAR0: 128 KiB prefetchable-less 32-bit memory at 0xFEBC0000 */
++    d.bar_mask[0] = 0xFFFE0000u; d.bar_ro[0] = 0x0; d.cfg[4] = 0xFEBC0000u;
++    /* BAR1: 64-byte I/O at 0xC040 */
++    d.bar_mask[1] = 0xFFFFFFC0u; d.bar_ro[1] = 0x1; d.cfg[5] = 0xC041u;
++    assert(baura_pci_bar_probe(&o, 0, 3, 0, bars) == BAURA_OK);
++    assert(bars[0].kind == BAURA_BAR_MEM32 && bars[0].size == 0x20000u &&
++           bars[0].base == 0xFEBC0000u && !bars[0].prefetchable);
++    assert(bars[1].kind == BAURA_BAR_IO && bars[1].size == 0x40u && bars[1].base == 0xC040u);
++    assert(bars[2].kind == BAURA_BAR_NONE);
++    /* everything restored, including the write-one-to-clear status bits */
++    assert(d.cfg[4] == 0xFEBC0000u && d.cfg[5] == 0xC041u);
++    assert(d.cfg[1] == 0x0007u);
++    assert(d.status == 0x0210u);          /* status was not cleared */
++    assert(!d.decode_was_enabled_during_sizing);
++}
++
++static void test_mem64(void) {
++    Dev d; BauraPciCfgOps o; BauraPciBar bars[6];
++    dev_init(&d); o = ops_for(&d);
++    /* BAR2/3: 64-bit prefetchable, 16 MiB at 0x1_E000_0000 */
++    d.bar_mask[2] = 0xFF000000u; d.bar_ro[2] = 0xCu; d.cfg[6] = 0xE000000Cu;
++    d.bar_mask[3] = 0xFFFFFFFFu; d.cfg[7] = 0x1u;
++    assert(baura_pci_bar_probe(&o, 0, 4, 0, bars) == BAURA_OK);
++    assert(bars[2].kind == BAURA_BAR_MEM64 && bars[2].prefetchable);
++    assert(bars[2].size == 0x1000000u && bars[2].base == 0x1E0000000ull);
++    assert(bars[3].kind == BAURA_BAR_NONE);
++    assert(d.cfg[6] == 0xE000000Cu && d.cfg[7] == 1u);
++    /* 64-bit BAR whose upper half is not implemented (reads back 0) */
++    dev_init(&d); o = ops_for(&d);
++    d.bar_mask[0] = 0xFFF00000u; d.bar_ro[0] = 0x4u; d.cfg[4] = 0xFE000004u;
++    d.bar_mask[1] = 0u;
++    assert(baura_pci_bar_probe(&o, 0, 4, 0, bars) == BAURA_OK);
++    assert(bars[0].kind == BAURA_BAR_MEM64 && bars[0].size == 0x100000u);
++}
++
++static void test_errors_and_restore(void) {
++    Dev d; BauraPciCfgOps o; BauraPciBar bars[6];
++    int n;
++    dev_init(&d); o = ops_for(&d);
++    assert(baura_pci_bar_probe(0, 0, 0, 0, bars) == BAURA_ERR_INVALID_ARGUMENT);
++    assert(baura_pci_bar_probe(&o, 0, 32, 0, bars) == BAURA_ERR_INVALID_ARGUMENT);
++    assert(baura_pci_bar_probe(&o, 0, 0, 8, bars) == BAURA_ERR_INVALID_ARGUMENT);
++    /* absent function */
++    d.cfg[0] = 0xFFFFFFFFu;
++    assert(baura_pci_bar_probe(&o, 0, 1, 0, bars) == BAURA_ERR_INVALID_STATE);
++    /* bridge (header type 1) is refused without any write */
++    dev_init(&d); o = ops_for(&d); d.cfg[3] = 0x00010000u;
++    assert(baura_pci_bar_probe(&o, 0, 1, 0, bars) == BAURA_ERR_INVALID_STATE);
++    assert(d.writes == 0);
++    /* read failure before any write */
++    dev_init(&d); o = ops_for(&d); d.fail_all_reads = 1;
++    assert(baura_pci_bar_probe(&o, 0, 1, 0, bars) == BAURA_ERR_IO && d.writes == 0);
++    /* 64-bit BAR in the last slot is invalid; state still restored */
++    dev_init(&d); o = ops_for(&d);
++    d.bar_mask[5] = 0xFFFFFFF0u; d.cfg[9] = 0x4u; d.bar_ro[5] = 0x4u;
++    assert(baura_pci_bar_probe(&o, 0, 1, 0, bars) == BAURA_ERR_INVALID_STATE);
++    assert(d.cfg[1] == 7u && d.cfg[9] == 4u);
++    /* a failing write at every possible position never leaves decode off
++     * silently: either the whole call succeeds or the original values are back
++     * (command restore is the final write, so only a failure of that very
++     * write can leave decoding disabled, and it is reported as an error) */
++    for (n = 1; n <= 12; ++n) {
++        BauraStatus st;
++        dev_init(&d); o = ops_for(&d);
++        d.bar_mask[0] = 0xFFFE0000u; d.cfg[4] = 0xFEBC0000u;
++        d.fail_write_after = n;
++        st = baura_pci_bar_probe(&o, 0, 3, 0, bars);
++        if (st == BAURA_OK) continue;
++        assert(st == BAURA_ERR_IO);
++        assert(d.cfg[4] == 0xFEBC0000u);
++        assert(bars[0].kind == BAURA_BAR_NONE);
++    }
++}
++
++static void test_untyped(void) {
++    BauraUntypedDesc u[3];
++    u[0].paddr = 0x100000; u[0].size_bits = 20; u[0].is_device = 0;   /* RAM */
++    u[1].paddr = 0xFEBC0000ull; u[1].size_bits = 17; u[1].is_device = 1;
++    u[2].paddr = 0xFD000000ull; u[2].size_bits = 24; u[2].is_device = 1;
++    assert(baura_untyped_find_device(u, 3, 0xFEBC0000ull, 0x20000u) == 1);
++    assert(baura_untyped_find_device(u, 3, 0xFEBC0000ull, 0x20001u) == -1);
++    assert(baura_untyped_find_device(u, 3, 0xFD100000ull, 0x1000u) == 2);
++    assert(baura_untyped_find_device(u, 3, 0x100000ull, 0x1000u) == -1); /* RAM */
++    assert(baura_untyped_find_device(u, 3, 0, 0) == -1);
++    assert(baura_untyped_find_device(u, 3, UINT64_MAX - 1, 16) == -1);   /* wraps */
++    assert(baura_untyped_find_device(0, 0, 0xFD000000ull, 16) == -1);
++}
++
++/* The port backend write path, against a trivial fake of ports 0xCF8/0xCFC. */
++typedef struct { uint32_t address; uint32_t data_written; uint32_t address_at_write; int writes; } Ports;
++static BauraStatus p_out(void *c, uint16_t port, uint32_t v) {
++    Ports *p = c;
++    if (port == BAURA_PCI_CONFIG_ADDRESS_PORT) p->address = v;
++    else { p->data_written = v; p->address_at_write = p->address; ++p->writes; }
++    return BAURA_OK;
++}
++static BauraStatus p_in(void *c, uint16_t port, uint32_t *v) { (void)c; (void)port; *v = 0; return BAURA_OK; }
++
++static void test_backend_write(void) {
++    Ports p; BauraPciPortIo io; BauraPciPortBackend b;
++    memset(&p, 0, sizeof p);
++    io.out32 = p_out; io.in32 = p_in; io.context = &p;
++    assert(baura_pci_port_backend_init(&b, &io) == BAURA_OK);
++    assert(baura_pci_port_config_write(0, 3, 1, 0x10, 0xDEADBEEFu, &b) == 1);
++    assert(p.data_written == 0xDEADBEEFu);
++    assert(p.address_at_write == baura_pci_config_address(0, 3, 1, 0x10));
++    assert(baura_pci_port_config_write(0, 32, 0, 0x10, 0, &b) == 0);
++    assert(baura_pci_port_config_write(0, 0, 8, 0x10, 0, &b) == 0);
++    assert(baura_pci_port_config_write(0, 0, 0, 0x11, 0, &b) == 0);
++    assert(baura_pci_port_config_write(0, 0, 0, 0x10, 0, 0) == 0);
++    assert(p.writes == 1);
++}
++
++int main(void) {
++    test_mem32_io_and_restore();
++    test_mem64();
++    test_errors_and_restore();
++    test_untyped();
++    test_backend_write();
++    puts("pci_bar_test: all tests passed");
++    return 0;
++}
+diff --git a/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md b/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
+index 965cf08..9e5868d 100644
+--- a/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
++++ b/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
+@@ -61,7 +61,7 @@ history (last present in commit `86642c0`) if their content is needed.
+ | Driver execution | In-process C probe callback; no driver image loading, isolation, task lifecycle, or resource delegation |
+ | Driver lifecycle | Rust crate defines a platform-backend contract; no concrete seL4 backend is bound |
+ | Storage driver | None. `USERSPACE/DRIVERS/STORAGE_DRIVERS` is a mock-up, not a driver: reads return dummy data, writes do nothing and report success, no register is accessed, and the crate does not compile (`uintptr_t` is not a Rust type; `cargo check` reports 3 errors) |
+-| Resource assignment | Not implemented; BAR values are retained as raw PCI config dwords with a validity mask and are not sized, mapped or authorized; MSI/MSI-X are located but not configured |
++| Resource assignment | BAR sizing (`BOOT/SEL4/pci_bar.c`) and device-untyped lookup are implemented and host-tested against a fake device; nothing is mapped (no `Retype`/`Page_Map` code), assigned, or authorized, nothing has run on real hardware, and the registry still keeps raw BAR dwords. MSI/MSI-X are located but not configured |
+ | Non-PCI discovery | No USB, ACPI device enumeration, ACPI namespace, or device-tree discovery service |
+ | ABI exposure | No device-enumeration or driver-management operation in API/ABI v2 |
+ 
+diff --git a/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+index 2baf87e..63f97ff 100644
+--- a/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
++++ b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+@@ -646,7 +646,7 @@ font. Un pilote n'est "supporté" que s'il a passé :
+ | M1b | Console visible sans port série : texte dessiné sur le framebuffer du BootInfo ; lecture du BootInfo (RAM, écran, RSDP) | À faire | Les valeurs affichées sous QEMU correspondent à la configuration de la VM (§4.5, §12.2) |
+ | M2 | Backend PCI seL4 + installation par l'initial task | **Code écrit et testé sur hôte** ; à vérifier au démarrage (dépend de M1) | La liste d'une machine QEMU affiche les bons vendor/device |
+ | M2b | Premier essai sur PC réel, **lecture seule**, selon le protocole du §12 (étages 0 à 3) | À faire | La liste PCI de BAURA couvre celle de `lspci -nn` relevée sous Linux live sur la même machine |
+-| M3 | Listing complet : classification, sous-IDs, capacités, identifiants stables, capacités du registre | **Fait** (testé sur hôte). Reste : ECAM, mesure des BAR | Tests hôte verts + comparaison avec `lspci -nn` d'une VM de référence |
++| M3 | Listing complet : classification, sous-IDs, capacités, identifiants stables, capacités du registre | **Fait** (testé sur hôte). Mesure des BAR écrite et testée sur hôte ([09](./DRIVER_DOCS/09_BAR_ET_MAPPING.md)) ; reste : ECAM, mapping seL4 des BAR | Tests hôte verts + comparaison avec `lspci -nn` d'une VM de référence |
+ | M4 | Catalogue de descripteurs + matcher à score + états de liaison (§5) | À faire | Tests : spécifique > générique, repli après échec de `probe`, liste noire |
+ | M5 | Backend de lancement isolé (contrat Rust → tâches seL4) + délégation de capabilities + hotplug + MSI | À faire | Un pilote trivial tourne comme tâche, crashe et redémarre sans toucher au Core |
+ | M6 | **Premiers pilotes open source (phase 1)** : framebuffer, AHCI ou virtio-blk, PS/2 ; registre `THIRD_PARTY_DRIVERS.md` et choix de la licence | À faire | Lecture d'un bloc de disque sous QEMU via le VFS ; clavier utilisable |
+diff --git a/KERNEL/BAURA_CORE/DRIVER_DOCS/09_BAR_ET_MAPPING.md b/KERNEL/BAURA_CORE/DRIVER_DOCS/09_BAR_ET_MAPPING.md
+new file mode 100644
+index 0000000..6f47b6c
+--- /dev/null
++++ b/KERNEL/BAURA_CORE/DRIVER_DOCS/09_BAR_ET_MAPPING.md
+@@ -0,0 +1,65 @@
++# 09 — Dimensionnement des BAR et recherche d'untyped (jalon M3, première partie)
++
++## 1. Ce qui est écrit
++
++| Fichier | Rôle | État |
++| --- | --- | --- |
++| `BOOT/SEL4/pci_backend.c` : `baura_pci_port_config_write` | Écriture d'un dword de configuration (0xCF8/0xCFC) | Testé sur hôte |
++| `BOOT/SEL4/pci_bar.c` : `baura_pci_bar_probe` | Dimensionne les 6 BAR d'une fonction de type d'en-tête 0 | Testé sur hôte (faux appareil) |
++| `BOOT/SEL4/pci_bar.c` : `baura_untyped_find_device` | Trouve l'untyped *device* qui contient une plage | Testé sur hôte |
++| `BOOT/tests/pci_bar_test.c` | Tests ; `make test-boot` | Passe |
++
++**Pas écrit :** le `Retype` d'untyped en frames et le `seL4_X86_Page_Map`
++(décrits en `02_…` §4). Ils ne peuvent pas être testés sur hôte et rien n'a été
++compilé contre les en-têtes seL4 générés ni démarré. Le code actuel ne fait que
++dire **quelle plage** est utile et **quel untyped** la contient.
++
++## 2. Procédure de dimensionnement (implémentée)
++
++1. Lire ID, type d'en-tête, registre de commande, 6 BAR. Fonction absente
++   (vendor `0xFFFF`) ou type d'en-tête ≠ 0 (ponts : types 1/2) → refus **sans
++   aucune écriture**.
++2. Écrire la commande avec les bits 0 (E/S) et 1 (mémoire) à 0 : l'appareil
++   cesse de décoder pendant le dimensionnement.
++3. Pour chaque BAR : écrire `0xFFFFFFFF`, relire, **restaurer** la valeur
++   d'origine (une restauration qui échoue est retentée une fois).
++4. Taille = `~masque + 1` (masque sans les bits de drapeaux : `& ~0xF` mémoire,
++   `& ~0x3` E/S). BAR E/S dont les 16 bits hauts sont à 0 : taille sur 16 bits.
++   BAR mémoire 64 bits : deux dwords ; si la moitié haute relit 0, la taille est
++   calculée sur 32 bits. La moitié haute est rapportée `NONE`.
++5. Restaurer la commande.
++
++**Piège corrigé par un test :** le dword à l'offset 4 contient la commande
++(bits 15:0) **et** le statut (bits 31:16), dont les bits sont à écrire-1-pour-
++effacer. Réécrire la valeur lue effacerait des bits de statut. Le code écrit
++toujours la moitié statut à 0 ; un test vérifie que le statut n'est pas modifié
++(vérifié par mutation : l'ancienne version fait échouer le test).
++
++## 3. Limites et risques — à lire avant un PC réel
++
++- **Un appareil cesse de décoder pendant quelques accès.** Ne dimensionne pas un
++  appareil qu'un autre agent utilise (firmware, SMM, contrôleur de la console
++  affichée). Un framebuffer GPU qui sert à l'affichage ne doit **pas** être
++  dimensionné ; le BAR du framebuffer vient du BootInfo (`02_…`).
++- Les ponts et l'hôte (bus 0, 00:00.0) ne sont pas dimensionnés (type ≠ 0 ou à
++  exclure explicitement) **[proposition]** : ne dimensionner que les appareils
++  qu'un pilote va réellement prendre, jamais « tout le bus au démarrage ».
++- Seuls les BAR sont couverts : ROM d'extension (offset 0x30), BAR des ponts,
++  BAR virtuels SR-IOV, BAR MSI-X (table/PBA, dans un BAR existant) ne le sont
++  pas.
++- Une valeur de BAR de **0** signifie « non assigné par le firmware ». Ce code
++  ne l'assigne pas ; l'attribution de plages est un chantier distinct.
++- Mécanisme #1 : non atomique, 256 octets. Le backend refuse la ré-entrance mais
++  ne verrouille pas (`03_…`).
++- **Sécurité :** la fonction d'écriture n'est donnée qu'au code de dimensionnement
++  du gestionnaire de périphériques, jamais à un pilote (`05_…` §5b).
++
++## 4. Étapes suivantes pour mapper (non faites)
++
++1. Pour chaque BAR utile : `baura_untyped_find_device(list, n, base, size)`.
++2. Découper l'untyped si nécessaire (les objets d'un untyped sont alloués dans
++   l'ordre : atteindre l'adresse voulue demande des `Retype` intermédiaires).
++3. `seL4_Untyped_Retype` en `seL4_X86_4K`, puis `seL4_X86_Page_Map` avec
++   `seL4_X86_CacheDisabled` (BAR de registres) ; tables de pages si nécessaire.
++4. Tester sous QEMU `q35` en lisant un registre connu (ex. `device_feature` de
++   la config commune virtio) et en comparant au résultat attendu.
+diff --git a/KERNEL/BAURA_CORE/DRIVER_DOCS/README.md b/KERNEL/BAURA_CORE/DRIVER_DOCS/README.md
+index 6647675..96a2e06 100644
+--- a/KERNEL/BAURA_CORE/DRIVER_DOCS/README.md
++++ b/KERNEL/BAURA_CORE/DRIVER_DOCS/README.md
+@@ -13,6 +13,7 @@ Statut de ce qui existe : [`../DEVICE_DRIVER_STATUS.md`](../DEVICE_DRIVER_STATUS
+ | [06](./06_PLAN_VIRTIO_BLK.md) | Premier pilote : virtio-blk |
+ | [07](./07_PAQUETS_ET_MISES_A_JOUR.md) | Paquets, signature, retour arrière, pannes |
+ | [08](./08_DECISIONS_A_PRENDRE.md) | Décisions ouvertes |
++| [09](./09_BAR_ET_MAPPING.md) | Dimensionnement des BAR, recherche d'untyped (M3, partie 1) |
+ | [THIRD_PARTY_DRIVERS](./THIRD_PARTY_DRIVERS.md) | Registre de provenance (modèle) |
+ | [COMPATIBILITY_MATRIX](./COMPATIBILITY_MATRIX.md) | Matrice d'essais (modèle) |
+ 
+diff --git a/Makefile b/Makefile
+index d2799b3..44b6117 100644
+--- a/Makefile
++++ b/Makefile
+@@ -211,6 +211,11 @@ test-boot:
+ 		KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c \
+ 		KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c
+ 	$(BUILD_DIR)/pci_backend_test
++	$(HOST_CC) -std=c11 -Wall -Wextra -Werror \
++		-o $(BUILD_DIR)/pci_bar_test \
++		BOOT/tests/pci_bar_test.c BOOT/SEL4/pci_bar.c BOOT/SEL4/pci_backend.c \
++		KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c
++	$(BUILD_DIR)/pci_bar_test
+ 
+ test-communication:
+ 	mkdir -p $(BUILD_DIR)
+-- 
+2.43.0
+

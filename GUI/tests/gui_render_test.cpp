@@ -1,9 +1,11 @@
 #include <cassert>
+#include <algorithm>
 #include <climits>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <limits>
 
 #include "../BAURA_GUI_FFI.h"
@@ -452,6 +454,20 @@ int main() {
     assert(effects.draw_glass_panel(20, 20, 100, 80, 12,
                                     0xFF223344u, 160));
     assert(!effects.apply_blur(0, 0, 10, 10, -1));
+
+    static uint32_t split_taskbar_pixels[800 * 600];
+    std::fill(std::begin(split_taskbar_pixels), std::end(split_taskbar_pixels),
+              0xFF203040u);
+    BGEFramebuffer split_taskbar_fb{
+        split_taskbar_pixels, 800, 600, 800,
+        sizeof(split_taskbar_pixels) / sizeof(split_taskbar_pixels[0])};
+    BGERenderer split_taskbar_renderer(split_taskbar_fb);
+    BauraTaskbar split_taskbar;
+    split_taskbar.render(split_taskbar_renderer);
+    assert(split_taskbar_renderer.pixel(24, 564) != 0xFF203040u);
+    assert(split_taskbar_renderer.pixel(624, 564) != 0xFF203040u);
+    assert(split_taskbar_renderer.pixel(400, 564) == 0xFF203040u);
+
     BGE3DRenderer renderer_3d(renderer, 64, 64);
     renderer_3d.clear_depth();
     const BGETriangle far_triangle{
@@ -678,7 +694,37 @@ int main() {
                                      {120, 110, 480, 300}) == 0) {
             return 1;
         }
+        if (!preview_ui.taskbar().upsert_app(1, "Files", "folder", false) ||
+            !preview_ui.taskbar().upsert_app(2, "Settings", "settings", true) ||
+            !preview_ui.taskbar().upsert_app(3, "Network", "network", false) ||
+            !preview_ui.taskbar().set_status(
+                {true, true, 87, false, "FR", "09:41", 24, true}) ||
+            !preview_ui.taskbar().set_media(
+                {"BAURA radio", "System audio", true, true})) {
+            return 1;
+        }
+        preview_ui.taskbar().set_notification_count(3);
         preview_ui.render_desktop(0.0f);
+        renderer.draw_text(148, 178, "YOUR DAY, IN FOCUS",
+                           0xFFF4F7FBu, 2);
+        renderer.draw_text(148, 202, "A calmer workspace, built around you",
+                           0xFFB7C2D0u);
+        renderer.draw_rounded_rect(140, 226, 204, 68, 14,
+                                   0xBFFFFFFFu, 24);
+        renderer.draw_rounded_rect(352, 226, 204, 68, 14,
+                                   0xBFFFFFFFu, 24);
+        renderer.draw_rounded_rect(140, 306, 204, 68, 14,
+                                   0xBFFFFFFFu, 24);
+        renderer.draw_rounded_rect(352, 306, 204, 68, 14,
+                                   0xBFFFFFFFu, 24);
+        renderer.draw_text(156, 246, "SYSTEM", 0xFFB7C2D0u);
+        renderer.draw_text(156, 268, "All services ready", 0xFF55C99Au);
+        renderer.draw_text(368, 246, "WORKSPACE", 0xFFB7C2D0u);
+        renderer.draw_text(368, 268, "3 apps available", 0xFFF4F7FBu);
+        renderer.draw_text(156, 326, "CONNECTED", 0xFFB7C2D0u);
+        renderer.draw_text(156, 348, "Network is online", 0xFF6BD5E1u);
+        renderer.draw_text(368, 326, "PERSONAL", 0xFFB7C2D0u);
+        renderer.draw_text(368, 348, "Welcome back", 0xFFF4F7FBu);
         if (!write_bmp(preview_path, desktop_fb)) return 1;
     }
     return 0;

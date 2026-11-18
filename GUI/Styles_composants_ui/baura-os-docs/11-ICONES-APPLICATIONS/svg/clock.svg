@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6D66F2"/><stop offset="1" stop-color="#4338CA"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#E0E7FF" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M12 32A20 20 0 1 1 52 32A20 20 0 1 1 12 32Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M12 32A20 20 0 1 1 52 32A20 20 0 1 1 12 32Z" fill="url(#g1)"/>
+<path d="M32 16L32 14" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M40 18.14L41 16.41" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M45.86 24L47.59 23" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M48 32L50 32" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M45.86 40L47.59 41" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M40 45.86L41 47.59" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M32 48L32 50" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M24 45.86L23 47.59" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M18.14 40L16.41 41" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M16 32L14 32" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M18.14 24L16.41 23" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M24 18.14L23 16.41" fill="none" stroke="#4338CA" stroke-opacity="0.60" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M32 32L32 20" fill="none" stroke="#4338CA" stroke-opacity="1.00" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M32 32L41 37" fill="none" stroke="#4338CA" stroke-opacity="1.00" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29 32A3 3 0 1 1 35 32A3 3 0 1 1 29 32Z" fill="#E5C34A"/>
+</svg>

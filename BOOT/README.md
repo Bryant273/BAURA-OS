@@ -37,10 +37,12 @@ normalized contract, not the native UEFI descriptor layout.
 `INITRD/manifest.txt` is a plan, not evidence that these binaries are built or
 present in a boot image.
 
-`GUI/UI_FRAMEWORK/baura_brand.h` contains a framebuffer-based BAURA startup
-splash and the shared software-rendered mark. The splash is currently a
-reusable GUI surface only: the legacy Multiboot path has no connected graphics
-framebuffer, and the seL4 path has no integrated initial task or display
-mapping. It is not shown during a real boot yet.
+`GUI/UI_FRAMEWORK/baura_brand.h` and
+`BOOT/FIRMWARE/FRAMEBUFFER/baura_boot_splash.h` contain the BAURA startup splash
+and the shared software-rendered mark. `baura_boot_splash.c` provides a
+freestanding C implementation (gradient background, glass panel, BAURA mark with
+spark, lockup typography, status line, and progress bar) callable directly by
+the x86_64 seL4 initial task (`BOOT/SEL4/initial_task.c`) upon detecting a
+linear framebuffer in `seL4_BootInfo`.
 
 Host checks: `make test-boot`.

@@ -3,6 +3,7 @@
 #include "baura_brand.h"
 #include "baura_theme.h"
 #include "papirus_icon_catalog.h"
+#include "../BGE/effects_engine.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -19,6 +20,51 @@ static void draw_text_prefix(BGERenderer &renderer, int x, int y,
     std::copy_n(text.data(), copied, buffer);
     buffer[copied] = '\0';
     renderer.draw_text(x, y, buffer, color);
+}
+
+static bool draw_glass_capsule(BGERenderer &renderer, BGEEffects &effects,
+                               int x, int y, int width, int height,
+                               int radius) {
+    if (width <= 0 || height <= 0) return false;
+    effects.apply_blur(x + radius / 2, y + radius / 2,
+                       width - radius, height - radius, 5);
+    renderer.draw_rounded_rect(x + 2, y + 4, width, height, radius,
+                               BauraTheme::Shadow, 150);
+    renderer.draw_rounded_rect(x, y, width, height, radius,
+                               BauraTheme::GlassDark, 226);
+    renderer.draw_rounded_rect(x, y, width, height, radius,
+                               BauraTheme::Border, 95);
+    renderer.draw_rounded_rect(x + radius, y + 1, width - 2 * radius, 1, 0,
+                               BauraTheme::White, 40);
+    return true;
+}
+
+struct TaskbarLayout {
+    int left_x;
+    int left_width;
+    int right_x;
+    int right_width;
+};
+
+static bool taskbar_layout(int screen_width, const BauraTaskbarStatus &status,
+                           size_t app_count, TaskbarLayout &layout) {
+    if (screen_width < 120) return false;
+    int right_content = 38;
+    if (!status.date_time.empty()) {
+        right_content += static_cast<int>(
+            std::min<size_t>(status.date_time.size(), 12) * 6u) + 12;
+    }
+    if (!status.language.empty()) right_content += 32;
+    if (status.battery_present) right_content += 58;
+    right_content += 28;
+    layout.right_width = std::min(screen_width - 36, right_content + 26);
+    layout.left_x = 16;
+    layout.right_x = screen_width - layout.right_width - 16;
+    const size_t visible_apps = std::min<size_t>(app_count, 6);
+    layout.left_width = std::min(
+        screen_width - layout.right_width - 40,
+        184 + static_cast<int>(visible_apps) * 44);
+    return layout.left_width >= 156 && layout.right_width >= 80;
 }
 
 BauraTaskbar::BauraTaskbar()
@@ -212,9 +258,12 @@ bool BauraTaskbar::handle_click(int x, int y, uint32_t screen_width,
             toggle_search();
             return true;
         }
-        int app_x = 184;
+        TaskbarLayout layout{};
+        if (!taskbar_layout(static_cast<int>(screen_width), status,
+                            apps.size(), layout)) return false;
+        int app_x = layout.left_x + 170;
         for (const BauraTaskbarApp &app : apps) {
-            if (app_x + 42 >= static_cast<int>(screen_width) - 230) break;
+            if (app_x + 42 >= layout.left_x + layout.left_width - 8) break;
             if (y >= static_cast<int>(screen_height) - 47 &&
                 y < static_cast<int>(screen_height) - 11 &&
                 x >= app_x && x < app_x + 38) {
@@ -270,80 +319,83 @@ void BauraTaskbar::draw_taskbar(BGERenderer &renderer) {
     const BGEFramebuffer &fb = renderer.framebuffer();
     const int width = static_cast<int>(fb.width);
     if (width < 120 || fb.height < 58) return;
-    const int bar_height = 58;
-    const int y = static_cast<int>(fb.height) - bar_height;
-    renderer.draw_rounded_rect(12, y + 5, width - 24, bar_height - 10, 18,
-                               BauraTheme::GlassDark, 235);
-    renderer.draw_rounded_rect(12, y + 5, width - 24, bar_height - 10, 18,
-                               BauraTheme::Border, 80);
+    const int bar_height = 52;
+    const int y = static_cast<int>(fb.height) - 62;
+    TaskbarLayout layout{};
+    if (!taskbar_layout(width, status, apps.size(), layout)) return;
+    BGEEffects effects(renderer);
+    draw_glass_capsule(renderer, effects, layout.left_x, y, layout.left_width,
+                       bar_height, 18);
+    draw_glass_capsule(renderer, effects, layout.right_x, y, layout.right_width,
+                       bar_height, 18);
 
-    renderer.draw_rounded_rect(22, y + 12, 36, 34, 11,
+    renderer.draw_rounded_rect(layout.left_x + 9, y + 9, 36, 34, 11,
                                start_open ? BauraTheme::AccentBlue
                                           : BauraTheme::SurfaceRaised);
-    BauraBrand::draw_mark(renderer, 27, y + 16, 26);
-    renderer.draw_rounded_rect(64, y + 12, 110, 34, 12,
+    BauraBrand::draw_mark(renderer, layout.left_x + 14, y + 13, 26);
+    renderer.draw_rounded_rect(layout.left_x + 51, y + 9, 110, 34, 12,
                                BauraTheme::SurfaceRaised, 210);
-    draw_icon(renderer, "search", 69, y + 16, 24);
-    renderer.draw_text(96, y + 25, "Search", BauraTheme::TextSecondary);
+    draw_icon(renderer, "search", layout.left_x + 56, y + 13, 24);
+    renderer.draw_text(layout.left_x + 83, y + 22, "Search",
+                       BauraTheme::TextSecondary);
 
-    int app_x = 184;
-    const int right_reserve = 230;
+    int app_x = layout.left_x + 170;
     for (const BauraTaskbarApp &app : apps) {
-        if (app_x + 42 >= width - right_reserve) break;
-        renderer.draw_rounded_rect(app_x, y + 11, 38, 36, 10,
+        if (app_x + 42 >= layout.left_x + layout.left_width - 8) break;
+        renderer.draw_rounded_rect(app_x, y + 8, 38, 36, 10,
                                    app.focused ? BauraTheme::AccentBlue
                                                : BauraTheme::SurfaceRaised,
                                    app.focused ? 220 : 175);
-        draw_icon(renderer, app.icon_id.c_str(), app_x + 7, y + 16, 24);
+        draw_icon(renderer, app.icon_id.c_str(), app_x + 7, y + 13, 24);
         if (app.active) {
-            renderer.draw_rounded_rect(app_x + 16, y + 45, 6, 2, 1,
+            renderer.draw_rounded_rect(app_x + 16, y + 43, 6, 2, 1,
                                        app.focused ? BauraTheme::AccentCyan
                                                    : BauraTheme::TextSecondary);
         }
         app_x += 44;
     }
 
-    int right = width - 30;
+    int right = layout.right_x + layout.right_width - 14;
     if (!status.date_time.empty()) {
         const size_t time_length = std::min<size_t>(status.date_time.size(), 16);
         const int time_width = static_cast<int>(time_length * 6);
         right -= time_width;
-        draw_text_prefix(renderer, right, y + 25, status.date_time, 16,
+        draw_text_prefix(renderer, right, y + 22, status.date_time, 12,
                          BauraTheme::TextPrimary);
     }
     if (!status.language.empty()) {
         right -= 25;
-        draw_text_prefix(renderer, right, y + 25, status.language, 4,
+        draw_text_prefix(renderer, right, y + 22, status.language, 4,
                          BauraTheme::TextSecondary);
     }
     if (status.battery_present) {
         right -= 42;
-        draw_icon(renderer, "battery", right, y + 16, 24);
+        draw_icon(renderer, "battery", right, y + 13, 24);
         char percent[5] = {
             static_cast<char>('0' + status.battery_percent / 100),
             static_cast<char>('0' + (status.battery_percent / 10) % 10),
             static_cast<char>('0' + status.battery_percent % 10), '%', '\0'
         };
         const char *shown = status.battery_percent == 100 ? percent : percent + 1;
-        renderer.draw_text(right + 24, y + 25, shown,
+        renderer.draw_text(right + 24, y + 22, shown,
                            status.charging ? BauraTheme::Success
                                            : BauraTheme::TextSecondary);
     }
     right -= 28;
     draw_icon(renderer, status.network_connected ? "network" : "network-off",
-              right, y + 16, 24);
+              right, y + 13, 24);
 }
 
 void BauraTaskbar::draw_top_widgets(BGERenderer &renderer) {
     const BGEFramebuffer &fb = renderer.framebuffer();
     int x = static_cast<int>(fb.width) - 18;
     const int y = 12;
+    BGEEffects effects(renderer);
     if (media.visible) {
         const int width = std::min(220, static_cast<int>(fb.width) / 2);
         if (width >= 100) {
             x -= width;
-            renderer.draw_rounded_rect(x, y, width, 42, 14,
-                                       BauraTheme::GlassDark, 225);
+            draw_glass_capsule(renderer, effects, x, y, width, 42, 14);
             draw_icon(renderer, media.playing ? "media-pause" : "media-play",
                       x + 8, y + 8, 25);
             draw_text_prefix(renderer, x + 38, y + 10, media.title, 30,
@@ -385,7 +437,8 @@ void BauraTaskbar::draw_top_widgets(BGERenderer &renderer) {
 
 void BauraTaskbar::draw_start_panel(BGERenderer &renderer) {
     const int y = static_cast<int>(renderer.framebuffer().height) - 350;
-    renderer.draw_rounded_rect(18, y, 330, 330, 18, BauraTheme::GlassDark, 245);
+    BGEEffects effects(renderer);
+    draw_glass_capsule(renderer, effects, 18, y, 330, 330, 18);
     BauraBrand::draw_mark(renderer, 40, y + 16, 32);
     renderer.draw_text(82, y + 24, "BAURA", BauraTheme::TextPrimary, 2);
     renderer.draw_rounded_rect(38, y + 62, 286, 38, 12,
@@ -407,7 +460,8 @@ void BauraTaskbar::draw_start_panel(BGERenderer &renderer) {
 
 void BauraTaskbar::draw_search_panel(BGERenderer &renderer) {
     const int y = static_cast<int>(renderer.framebuffer().height) - 190;
-    renderer.draw_rounded_rect(18, y, 380, 165, 18, BauraTheme::GlassDark, 245);
+    BGEEffects effects(renderer);
+    draw_glass_capsule(renderer, effects, 18, y, 380, 165, 18);
     renderer.draw_rounded_rect(34, y + 18, 348, 38, 12,
                                BauraTheme::SurfaceRaised);
     draw_icon(renderer, "search", 42, y + 25, 24);
@@ -425,7 +479,8 @@ void BauraTaskbar::draw_notifications_panel(BGERenderer &renderer) {
     const int width = std::min(320, static_cast<int>(fb.width) - 24);
     if (width < 100 || fb.height < 310) return;
     const int x = static_cast<int>(fb.width) - width - 12;
-    renderer.draw_rounded_rect(x, 58, width, 230, 18, BauraTheme::GlassDark, 245);
+    BGEEffects effects(renderer);
+    draw_glass_capsule(renderer, effects, x, 58, width, 230, 18);
     BauraBrand::draw_mark(renderer, x + 20, 68, 28);
     renderer.draw_text(x + 58, 80, "Notifications", BauraTheme::TextPrimary, 2);
     if (notification_count == 0) {

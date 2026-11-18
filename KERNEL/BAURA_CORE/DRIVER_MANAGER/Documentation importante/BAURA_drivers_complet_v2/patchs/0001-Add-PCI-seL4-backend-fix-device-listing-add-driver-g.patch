@@ -1,0 +1,2032 @@
+From b81152a9765dfabe18664eaf68a5d4897405aa78 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 20 Oct 2026 20:09:45 +0000
+Subject: [PATCH 1/5] Add PCI seL4 backend, fix device listing, add driver
+ guide
+
+- BOOT/SEL4: PCI config backend (mechanism #1) with an injected port-I/O layer,
+  plus the seL4 binding that issues an I/O-port cap for 0xCF8-0xCFF.
+- initial_task installs the backend after Core startup and lists devices.
+- Device registry: classify USB host/bridge/audio/wireless correctly (USB host
+  was reported as an input device), read subsystem IDs and MSI/MSI-X/PCIe
+  capability offsets (bounded walk), keep device_id and driver binding across
+  rescans, raise capacities to 256 devices / 64 drivers.
+- Remove the two unbuilt printf-based PCI scanner prototypes.
+- Host tests for all of the above (make test-boot).
+- Rewrite DRIVER_DEVELOPMENT_GUIDE.md and DEVICE_DRIVER_STATUS.md to match the
+  code; open-source-first driver policy.
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01PNWzsy9sebpebHVW9npSuq
+---
+ BOOT/SEL4/initial_task.c                      |  62 ++
+ BOOT/SEL4/pci_backend.c                       |  42 ++
+ BOOT/SEL4/pci_backend.h                       |  59 ++
+ BOOT/SEL4/pci_backend_sel4.c                  |  76 +++
+ BOOT/SEL4/pci_backend_sel4.h                  |  29 +
+ BOOT/tests/pci_backend_test.c                 | 390 ++++++++++++
+ KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md     |  95 ++-
+ .../DEVICE_MANAGER/BAURA_DEVICE_MGR.c         | 121 +++-
+ .../DEVICE_MANAGER/BAURA_DEVICE_MGR.h         |  32 +-
+ .../DEVICE_MANAGER/baura_device_report.c      |  59 ++
+ .../DEVICE_MANAGER/baura_device_report.h      |  20 +
+ .../BAURA_CORE/DEVICE_MANAGER/pci_scanner.c   |  32 -
+ .../DEVICE_MANAGER/pci_scanner_enhanced.c     |  30 -
+ KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md | 580 ++++++++++++++++++
+ .../HARDWARE_MANAGER/baura_hardware_manager.c |   5 +-
+ .../HARDWARE_MANAGER/baura_hardware_manager.h |   2 +-
+ KERNEL/BAURA_CORE/README.md                   |   6 +-
+ Makefile                                      |  15 +
+ 18 files changed, 1545 insertions(+), 110 deletions(-)
+ create mode 100644 BOOT/SEL4/pci_backend.c
+ create mode 100644 BOOT/SEL4/pci_backend.h
+ create mode 100644 BOOT/SEL4/pci_backend_sel4.c
+ create mode 100644 BOOT/SEL4/pci_backend_sel4.h
+ create mode 100644 BOOT/tests/pci_backend_test.c
+ create mode 100644 KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c
+ create mode 100644 KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.h
+ delete mode 100644 KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner.c
+ delete mode 100644 KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner_enhanced.c
+ create mode 100644 KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+
+diff --git a/BOOT/SEL4/initial_task.c b/BOOT/SEL4/initial_task.c
+index e96db1a..489bc22 100644
+--- a/BOOT/SEL4/initial_task.c
++++ b/BOOT/SEL4/initial_task.c
+@@ -5,7 +5,10 @@
+ #include <sel4/sel4.h>
+ #include <sel4/bootinfo_types.h>
+ 
++#include "../../KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.h"
++#include "../../KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.h"
+ #include "../../KERNEL/BAURA_CORE/SYSTEM_API/baura_core_entry.h"
++#include "pci_backend_sel4.h"
+ 
+ static int valid_slot_region(seL4_SlotRegion region, seL4_Word cap_limit) {
+     return region.start <= region.end && region.end <= cap_limit;
+@@ -56,6 +59,63 @@ static BauraStatus sel4_console_write(void *context, const char *text,
+     return BAURA_OK;
+ }
+ 
++static void console_puts(const char *text) {
++    size_t length = 0;
++    while (text[length] != '\0') ++length;
++    (void)sel4_console_write(NULL, text, length);
++}
++
++static void console_put_int(int value) {
++    char digits[12];
++    size_t count = 0;
++    unsigned int magnitude = value < 0 ? 0u - (unsigned int)value : (unsigned int)value;
++    char text[14];
++    size_t out = 0;
++    do {
++        digits[count++] = (char)('0' + (magnitude % 10u));
++        magnitude /= 10u;
++    } while (magnitude != 0u);
++    if (value < 0) text[out++] = '-';
++    while (count > 0) text[out++] = digits[--count];
++    text[out] = '\0';
++    console_puts(text);
++}
++
++static void console_put_failure(const char *what, BauraStatus status) {
++    console_puts("BAURA_INIT: ");
++    console_puts(what);
++    console_puts(" (status ");
++    console_put_int((int)status);
++    console_puts(")\r\n");
++}
++
++/*
++ * Detects PCI devices and lists them on the console. The free-slot cursor is
++ * shared by everything that needs new capability slots in the root CNode.
++ */
++static void report_hardware(const seL4_BootInfo *boot_info) {
++    seL4_SlotPos next_free_slot = boot_info->empty.start;
++    BauraStatus status = baura_sel4_pci_install(boot_info, &next_free_slot);
++    if (status != BAURA_OK) {
++        console_put_failure("PCI backend unavailable", status);
++        return;
++    }
++    status = baura_hardware_refresh();
++    if (status != BAURA_OK) {
++        console_put_failure("PCI enumeration failed", status);
++        return;
++    }
++    console_puts("BAURA_INIT: PCI devices found: ");
++    console_put_int((int)dev_device_count());
++    console_puts("\r\n");
++    for (uint32_t index = 0; index < dev_device_count(); ++index) {
++        BauraDevice device;
++        char line[BAURA_DEVICE_REPORT_LINE_MAX];
++        if (dev_get_device(index, &device) != BAURA_OK) break;
++        if (baura_device_format_line(&device, line, sizeof(line)) != 0) console_puts(line);
++    }
++}
++
+ __attribute__((noreturn))
+ void baura_sel4_initial_task(seL4_BootInfo *boot_info) {
+     BauraCorePlatform platform = {0};
+@@ -68,6 +128,8 @@ void baura_sel4_initial_task(seL4_BootInfo *boot_info) {
+     if (baura_core_initial_task_start(&platform) != BAURA_OK) {
+         static const char failure[] = "BAURA_INIT: Core startup failed\r\n";
+         (void)sel4_console_write(NULL, failure, sizeof(failure) - 1u);
++    } else {
++        report_hardware(boot_info);
+     }
+ 
+     for (;;) seL4_Yield();
+diff --git a/BOOT/SEL4/pci_backend.c b/BOOT/SEL4/pci_backend.c
+new file mode 100644
+index 0000000..c559b3d
+--- /dev/null
++++ b/BOOT/SEL4/pci_backend.c
+@@ -0,0 +1,42 @@
++#include "pci_backend.h"
++
++uint32_t baura_pci_config_address(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset) {
++    return UINT32_C(0x80000000) |
++           ((uint32_t)bus << 16) |
++           ((uint32_t)(slot & 0x1Fu) << 11) |
++           ((uint32_t)(function & 0x07u) << 8) |
++           ((uint32_t)offset & 0xFCu);
++}
++
++BauraStatus baura_pci_port_backend_init(BauraPciPortBackend *backend, const BauraPciPortIo *io) {
++    if (backend == 0 || io == 0 || io->in32 == 0 || io->out32 == 0)
++        return BAURA_ERR_INVALID_ARGUMENT;
++    backend->io = *io;
++    backend->busy = 0;
++    return BAURA_OK;
++}
++
++int baura_pci_port_config_read(uint8_t bus, uint8_t slot, uint8_t function,
++                               uint8_t offset, uint32_t *value, void *context) {
++    BauraPciPortBackend *backend = (BauraPciPortBackend *)context;
++    uint32_t result = 0;
++    int ok;
++    if (backend == 0 || value == 0 || backend->io.in32 == 0 || backend->io.out32 == 0)
++        return 0;
++    if (slot >= 32u || function >= 8u || (offset & 0x3u) != 0) return 0;
++    if (backend->busy) return 0;
++    backend->busy = 1;
++    ok = backend->io.out32(backend->io.context, BAURA_PCI_CONFIG_ADDRESS_PORT,
++                           baura_pci_config_address(bus, slot, function, offset)) == BAURA_OK &&
++         backend->io.in32(backend->io.context, BAURA_PCI_CONFIG_DATA_PORT, &result) == BAURA_OK;
++    backend->busy = 0;
++    if (!ok) return 0;
++    *value = result;
++    return 1;
++}
++
++BauraStatus baura_pci_port_backend_install(BauraPciPortBackend *backend) {
++    if (backend == 0 || backend->io.in32 == 0 || backend->io.out32 == 0)
++        return BAURA_ERR_INVALID_ARGUMENT;
++    return dev_set_pci_reader(baura_pci_port_config_read, backend);
++}
+diff --git a/BOOT/SEL4/pci_backend.h b/BOOT/SEL4/pci_backend.h
+new file mode 100644
+index 0000000..f828387
+--- /dev/null
++++ b/BOOT/SEL4/pci_backend.h
+@@ -0,0 +1,59 @@
++#ifndef BAURA_PCI_BACKEND_H
++#define BAURA_PCI_BACKEND_H
++
++/*
++ * PCI configuration-space backend using the legacy x86 mechanism #1
++ * (address port 0xCF8, data port 0xCFC).
++ *
++ * This file contains no seL4 types: the actual port access is supplied through
++ * BauraPciPortIo, so the logic can be tested on a host. The seL4 binding that
++ * obtains an I/O-port capability and provides those callbacks is in
++ * pci_backend_sel4.c.
++ *
++ * Limits of this mechanism: it reaches only the first 256 bytes of each
++ * function's configuration space (no PCIe extended capabilities) and it is
++ * not atomic, because the address and data accesses are two separate port
++ * operations. Callers must serialise access; the backend only rejects a
++ * re-entrant call, it does not lock. PCIe ECAM (MMIO) is the planned
++ * replacement for extended configuration space.
++ */
++
++#include <stdint.h>
++
++#include "../../KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.h"
++
++#define BAURA_PCI_CONFIG_ADDRESS_PORT 0x0CF8u
++#define BAURA_PCI_CONFIG_DATA_PORT 0x0CFCu
++/* Smallest I/O-port range covering both ports (0xCF8-0xCFB and 0xCFC-0xCFF). */
++#define BAURA_PCI_CONFIG_PORT_FIRST 0x0CF8u
++#define BAURA_PCI_CONFIG_PORT_LAST 0x0CFFu
++
++typedef struct {
++    BauraStatus (*out32)(void *context, uint16_t port, uint32_t value);
++    BauraStatus (*in32)(void *context, uint16_t port, uint32_t *value);
++    void *context;
++} BauraPciPortIo;
++
++typedef struct {
++    BauraPciPortIo io;
++    uint8_t busy;
++} BauraPciPortBackend;
++
++/* Value written to the address port for a dword-aligned configuration offset. */
++uint32_t baura_pci_config_address(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset);
++
++BauraStatus baura_pci_port_backend_init(BauraPciPortBackend *backend, const BauraPciPortIo *io);
++
++/*
++ * Implements BauraPciConfigRead; `context` must be the BauraPciPortBackend.
++ * Returns 1 on success and 0 on failure. Failure covers: null arguments, slot
++ * >= 32, function >= 8, an offset that is not dword-aligned, a port error, or
++ * a re-entrant call.
++ */
++int baura_pci_port_config_read(uint8_t bus, uint8_t slot, uint8_t function,
++                               uint8_t offset, uint32_t *value, void *context);
++
++/* Installs the backend as the Core's PCI reader. The backend must outlive use. */
++BauraStatus baura_pci_port_backend_install(BauraPciPortBackend *backend);
++
++#endif
+diff --git a/BOOT/SEL4/pci_backend_sel4.c b/BOOT/SEL4/pci_backend_sel4.c
+new file mode 100644
+index 0000000..fc32b65
+--- /dev/null
++++ b/BOOT/SEL4/pci_backend_sel4.c
+@@ -0,0 +1,76 @@
++#include "pci_backend_sel4.h"
++#include "pci_backend.h"
++
++typedef struct {
++    seL4_CPtr ioport;
++} BauraSel4PciPorts;
++
++static BauraSel4PciPorts pci_ports;
++static BauraPciPortBackend pci_backend;
++static uint8_t pci_installed;
++
++static BauraStatus map_sel4_error(seL4_Error error) {
++    switch (error) {
++    case seL4_NoError:
++        return BAURA_OK;
++    case seL4_IllegalOperation:
++    case seL4_InvalidCapability:
++        return BAURA_ERR_PERMISSION;
++    case seL4_DeleteFirst:
++    case seL4_RevokeFirst:
++        return BAURA_ERR_ALREADY_EXISTS;
++    case seL4_InvalidArgument:
++    case seL4_RangeError:
++    case seL4_FailedLookup:
++        return BAURA_ERR_INVALID_ARGUMENT;
++    default:
++        return BAURA_ERR_IO;
++    }
++}
++
++static BauraStatus sel4_port_out32(void *context, uint16_t port, uint32_t value) {
++    const BauraSel4PciPorts *ports = (const BauraSel4PciPorts *)context;
++    return map_sel4_error(seL4_X86_IOPort_Out32(ports->ioport, port, value));
++}
++
++static BauraStatus sel4_port_in32(void *context, uint16_t port, uint32_t *value) {
++    const BauraSel4PciPorts *ports = (const BauraSel4PciPorts *)context;
++    seL4_X86_IOPort_In32_t result = seL4_X86_IOPort_In32(ports->ioport, port);
++    BauraStatus status = map_sel4_error(result.error);
++    if (status != BAURA_OK) return status;
++    *value = result.result;
++    return BAURA_OK;
++}
++
++BauraStatus baura_sel4_pci_install(const seL4_BootInfo *boot_info,
++                                   seL4_SlotPos *next_free_slot) {
++    BauraPciPortIo io;
++    BauraStatus status;
++    seL4_SlotPos slot;
++    if (boot_info == NULL || next_free_slot == NULL) return BAURA_ERR_INVALID_ARGUMENT;
++    if (pci_installed) return BAURA_ERR_ALREADY_EXISTS;
++    slot = *next_free_slot;
++    if (slot < boot_info->empty.start || slot >= boot_info->empty.end) return BAURA_ERR_CAPACITY;
++
++    /*
++     * The initial thread's root CNode has a guard of (word bits - size bits),
++     * so a slot is addressed with a depth of seL4_WordBits, not with the
++     * CNode's radix size.
++     */
++    status = map_sel4_error(seL4_X86_IOPortControl_Issue(
++        seL4_CapIOPortControl, BAURA_PCI_CONFIG_PORT_FIRST, BAURA_PCI_CONFIG_PORT_LAST,
++        seL4_CapInitThreadCNode, slot, seL4_WordBits));
++    if (status != BAURA_OK) return status;
++    *next_free_slot = slot + 1;
++
++    pci_ports.ioport = slot;
++    io.out32 = sel4_port_out32;
++    io.in32 = sel4_port_in32;
++    io.context = &pci_ports;
++    status = baura_pci_port_backend_init(&pci_backend, &io);
++    if (status != BAURA_OK) return status;
++    status = baura_pci_port_backend_install(&pci_backend);
++    if (status != BAURA_OK) return status;
++    pci_installed = 1;
++    return BAURA_OK;
++}
+diff --git a/BOOT/SEL4/pci_backend_sel4.h b/BOOT/SEL4/pci_backend_sel4.h
+new file mode 100644
+index 0000000..e47f555
+--- /dev/null
++++ b/BOOT/SEL4/pci_backend_sel4.h
+@@ -0,0 +1,29 @@
++#ifndef BAURA_PCI_BACKEND_SEL4_H
++#define BAURA_PCI_BACKEND_SEL4_H
++
++#include <sel4/sel4.h>
++#include <sel4/bootinfo_types.h>
++
++#include "../../KERNEL/BAURA_CORE/baura_core_types.h"
++
++/*
++ * Binds the PCI configuration backend (pci_backend.c) to seL4 on x86_64.
++ *
++ * Issues, from the initial task's IOPortControl capability, one I/O-port
++ * capability for ports 0xCF8-0xCFF into the CNode slot *next_free_slot, then
++ * installs the resulting reader with dev_set_pci_reader(). On success
++ * *next_free_slot is advanced past the slot that was used, so the caller keeps
++ * a single running free-slot cursor.
++ *
++ * Results:
++ *   BAURA_OK                  backend installed
++ *   BAURA_ERR_INVALID_ARGUMENT  null argument, or seL4 rejected the arguments
++ *   BAURA_ERR_CAPACITY        *next_free_slot is outside boot_info->empty
++ *   BAURA_ERR_PERMISSION      the kernel did not grant I/O-port authority
++ *   BAURA_ERR_ALREADY_EXISTS  already installed, or the ports were already issued
++ *   BAURA_ERR_IO              any other seL4 error
++ */
++BauraStatus baura_sel4_pci_install(const seL4_BootInfo *boot_info,
++                                   seL4_SlotPos *next_free_slot);
++
++#endif
+diff --git a/BOOT/tests/pci_backend_test.c b/BOOT/tests/pci_backend_test.c
+new file mode 100644
+index 0000000..0b9b229
+--- /dev/null
++++ b/BOOT/tests/pci_backend_test.c
+@@ -0,0 +1,390 @@
++/*
++ * Host tests for the PCI port backend and the Core device registry.
++ *
++ * A fake PCI host models configuration mechanism #1: a write to port 0xCF8
++ * selects a function and register, a read from 0xCFC returns that register.
++ * Absent functions read as all ones, as on real hardware.
++ */
++#include <assert.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++
++#include "../SEL4/pci_backend.h"
++#include "../../KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.h"
++
++#define FAKE_MAX_FUNCTIONS 24
++
++typedef struct {
++    uint8_t bus, slot, function;
++    uint8_t present;
++    uint32_t cfg[64];
++} FakeFunction;
++
++typedef struct {
++    FakeFunction functions[FAKE_MAX_FUNCTIONS];
++    uint32_t count;
++    uint32_t address;
++    int fail_out;
++    int fail_in;
++    unsigned out_calls;
++    unsigned in_calls;
++    BauraPciPortBackend *reenter;
++    int reenter_result;
++} FakeHost;
++
++static BauraStatus fake_out32(void *context, uint16_t port, uint32_t value) {
++    FakeHost *host = (FakeHost *)context;
++    ++host->out_calls;
++    assert(port == BAURA_PCI_CONFIG_ADDRESS_PORT);
++    if (host->fail_out) return BAURA_ERR_IO;
++    host->address = value;
++    return BAURA_OK;
++}
++
++static BauraStatus fake_in32(void *context, uint16_t port, uint32_t *value) {
++    FakeHost *host = (FakeHost *)context;
++    uint32_t index;
++    ++host->in_calls;
++    assert(port == BAURA_PCI_CONFIG_DATA_PORT);
++    if (host->fail_in) return BAURA_ERR_IO;
++    if (host->reenter != 0) {
++        uint32_t ignored;
++        host->reenter_result = baura_pci_port_config_read(0, 0, 0, 0, &ignored, host->reenter);
++    }
++    *value = 0xFFFFFFFFu;
++    if ((host->address & 0x80000000u) == 0) return BAURA_OK;
++    for (index = 0; index < host->count; ++index) {
++        const FakeFunction *fn = &host->functions[index];
++        if (fn->present && fn->bus == ((host->address >> 16) & 0xFFu) &&
++            fn->slot == ((host->address >> 11) & 0x1Fu) &&
++            fn->function == ((host->address >> 8) & 0x07u)) {
++            *value = fn->cfg[(host->address & 0xFCu) / 4u];
++            return BAURA_OK;
++        }
++    }
++    return BAURA_OK;
++}
++
++static FakeFunction *add_function(FakeHost *host, uint8_t bus, uint8_t slot, uint8_t function,
++                                  uint16_t vendor, uint16_t device, uint8_t class_code,
++                                  uint8_t subclass, uint8_t prog_if, uint8_t revision) {
++    FakeFunction *fn;
++    assert(host->count < FAKE_MAX_FUNCTIONS);
++    fn = &host->functions[host->count++];
++    memset(fn, 0, sizeof(*fn));
++    fn->bus = bus; fn->slot = slot; fn->function = function; fn->present = 1;
++    fn->cfg[0] = ((uint32_t)device << 16) | vendor;
++    fn->cfg[2] = ((uint32_t)class_code << 24) | ((uint32_t)subclass << 16) |
++                 ((uint32_t)prog_if << 8) | revision;
++    return fn;
++}
++
++static void make_backend(FakeHost *host, BauraPciPortBackend *backend) {
++    BauraPciPortIo io;
++    io.out32 = fake_out32; io.in32 = fake_in32; io.context = host;
++    assert(baura_pci_port_backend_init(backend, &io) == BAURA_OK);
++}
++
++static void test_address_and_validation(void) {
++    FakeHost host;
++    BauraPciPortBackend backend;
++    BauraPciPortIo io;
++    uint32_t value = 0;
++
++    assert(baura_pci_config_address(0x12, 0x1F, 7, 0xFC) == 0x8012FFFCu);
++    assert(baura_pci_config_address(0, 0, 0, 0) == 0x80000000u);
++    assert(baura_pci_config_address(0, 3, 0, 0x03) == (0x80000000u | (3u << 11)));
++
++    memset(&host, 0, sizeof(host));
++    add_function(&host, 1, 2, 3, 0x8086, 0x100E, 0x02, 0x00, 0x00, 0x03)->cfg[4] = 0xFEBF0000u;
++    make_backend(&host, &backend);
++
++    assert(baura_pci_port_config_read(1, 2, 3, 0x10, &value, &backend) == 1);
++    assert(value == 0xFEBF0000u);
++    assert(host.address == baura_pci_config_address(1, 2, 3, 0x10));
++    assert(baura_pci_port_config_read(1, 2, 3, 0x00, &value, &backend) == 1);
++    assert(value == 0x100E8086u);
++    /* an absent function reads as all ones */
++    assert(baura_pci_port_config_read(1, 2, 4, 0x00, &value, &backend) == 1);
++    assert(value == 0xFFFFFFFFu);
++
++    value = 0x55555555u;
++    assert(baura_pci_port_config_read(0, 32, 0, 0, &value, &backend) == 0);   /* slot out of range */
++    assert(baura_pci_port_config_read(0, 0, 8, 0, &value, &backend) == 0);    /* function out of range */
++    assert(baura_pci_port_config_read(0, 0, 0, 2, &value, &backend) == 0);    /* not dword-aligned */
++    assert(baura_pci_port_config_read(0, 0, 0, 0, 0, &backend) == 0);         /* null value */
++    assert(baura_pci_port_config_read(0, 0, 0, 0, &value, 0) == 0);           /* null context */
++    assert(value == 0x55555555u);                                             /* untouched on failure */
++
++    io.out32 = 0; io.in32 = fake_in32; io.context = &host;
++    assert(baura_pci_port_backend_init(&backend, &io) == BAURA_ERR_INVALID_ARGUMENT);
++    assert(baura_pci_port_backend_init(0, &io) == BAURA_ERR_INVALID_ARGUMENT);
++    assert(baura_pci_port_backend_init(&backend, 0) == BAURA_ERR_INVALID_ARGUMENT);
++}
++
++static void test_port_errors_and_reentrancy(void) {
++    FakeHost host;
++    BauraPciPortBackend backend;
++    uint32_t value = 0x77u;
++
++    memset(&host, 0, sizeof(host));
++    add_function(&host, 0, 1, 0, 0x8086, 0x1237, 0x06, 0x00, 0x00, 0x02);
++    make_backend(&host, &backend);
++
++    host.fail_out = 1;
++    assert(baura_pci_port_config_read(0, 1, 0, 0, &value, &backend) == 0 && value == 0x77u);
++    host.fail_out = 0; host.fail_in = 1;
++    assert(baura_pci_port_config_read(0, 1, 0, 0, &value, &backend) == 0 && value == 0x77u);
++    host.fail_in = 0;
++    /* a failure must not leave the backend locked */
++    assert(baura_pci_port_config_read(0, 1, 0, 0, &value, &backend) == 1 && value == 0x12378086u);
++
++    host.reenter = &backend; host.reenter_result = 1;
++    assert(baura_pci_port_config_read(0, 1, 0, 0, &value, &backend) == 1);
++    assert(host.reenter_result == 0);   /* the nested call was refused */
++    host.reenter = 0;
++    assert(baura_pci_port_config_read(0, 1, 0, 0, &value, &backend) == 1);
++}
++
++static void build_machine(FakeHost *host) {
++    FakeFunction *fn;
++    memset(host, 0, sizeof(*host));
++    add_function(host, 0, 0, 0, 0x8086, 0x1237, 0x06, 0x00, 0x00, 0x02);          /* host bridge */
++    fn = add_function(host, 0, 3, 0, 0x8086, 0x100E, 0x02, 0x00, 0x00, 0x03);     /* Ethernet */
++    fn->cfg[0x3C / 4] = 11;
++    fn->cfg[0x2C / 4] = 0x11001AF4u;                                              /* subsystem 1af4:1100 */
++    fn->cfg[1] = 0x00100007u;                                                     /* status: capability list */
++    fn->cfg[0x34 / 4] = 0x40;
++    fn->cfg[0x40 / 4] = 0x00005005u;                                              /* MSI, next 0x50 */
++    fn->cfg[0x50 / 4] = 0x00007010u;                                              /* PCIe, next 0x70 */
++    fn->cfg[0x70 / 4] = 0x00000011u;                                              /* MSI-X, end */
++    add_function(host, 0, 4, 0, 0x144D, 0xA808, 0x01, 0x08, 0x02, 0x01);          /* NVMe */
++    fn = add_function(host, 0, 5, 0, 0x8086, 0x1E31, 0x0C, 0x03, 0x30, 0x04);     /* xHCI */
++    fn->cfg[3] = 0x00800000u;                                                     /* multi-function */
++    add_function(host, 0, 5, 1, 0x8086, 0x1E20, 0x04, 0x03, 0x00, 0x04);          /* HD Audio */
++    add_function(host, 0, 6, 0, 0x10EC, 0xB822, 0x0D, 0x80, 0x00, 0x00);          /* wireless */
++    add_function(host, 0, 7, 0, 0x1234, 0x5678, 0x09, 0x00, 0x00, 0x00);          /* input controller */
++    add_function(host, 0, 8, 0, 0x8086, 0x1E22, 0x0C, 0x05, 0x00, 0x04);          /* SMBus */
++    add_function(host, 1, 0, 0, 0x10DE, 0x2684, 0x03, 0x00, 0x00, 0xA1);          /* GPU on bus 1 */
++}
++
++static unsigned probe_calls;
++
++static BauraStatus probe_count(BauraDevice *device, void *context) {
++    ++probe_calls;
++    device->driver_handle = context;
++    return BAURA_OK;
++}
++
++static void find(uint32_t vendor, uint32_t product, BauraDevice *out) {
++    uint32_t index;
++    for (index = 0; index < dev_device_count(); ++index) {
++        assert(dev_get_device(index, out) == BAURA_OK);
++        if (out->vendor_id == vendor && out->product_id == product) return;
++    }
++    assert(!"device not found");
++}
++
++static void test_discovery_and_classification(void) {
++    FakeHost host;
++    BauraPciPortBackend backend;
++    BauraDevice device;
++    uint32_t counts[BAURA_DEVICE_TYPE_COUNT] = {0};
++    uint32_t index;
++
++    build_machine(&host);
++    make_backend(&host, &backend);
++    dev_device_manager_init();
++    assert(dev_discover_pci() == BAURA_ERR_INVALID_STATE);   /* no reader yet */
++    assert(baura_pci_port_backend_install(&backend) == BAURA_OK);
++    assert(dev_discover_pci() == BAURA_OK);
++    assert(dev_device_count() == 9);
++
++    for (index = 0; index < dev_device_count(); ++index) {
++        assert(dev_get_device(index, &device) == BAURA_OK);
++        assert((uint32_t)device.type < BAURA_DEVICE_TYPE_COUNT);
++        ++counts[device.type];
++    }
++    assert(counts[DEV_TYPE_STORAGE] == 1 && counts[DEV_TYPE_NETWORK] == 1);
++    assert(counts[DEV_TYPE_GPU] == 1 && counts[DEV_TYPE_INPUT] == 1);
++    assert(counts[DEV_TYPE_OTHER] == 1 && counts[DEV_TYPE_USB_HOST] == 1);
++    assert(counts[DEV_TYPE_BRIDGE] == 1 && counts[DEV_TYPE_AUDIO] == 1);
++    assert(counts[DEV_TYPE_WIRELESS] == 1);
++
++    /* a USB host controller and an SMBus controller are not input devices */
++    find(0x8086, 0x1E31, &device);
++    assert(device.type == DEV_TYPE_USB_HOST && device.function == 0 && device.header_type == 0);
++    find(0x8086, 0x1E22, &device);
++    assert(device.type == DEV_TYPE_OTHER);
++    find(0x1234, 0x5678, &device);
++    assert(device.type == DEV_TYPE_INPUT);
++
++    /* multi-function device: function 1 was found */
++    find(0x8086, 0x1E20, &device);
++    assert(device.slot == 5 && device.function == 1 && device.type == DEV_TYPE_AUDIO);
++
++    /* the GPU is on the second bus */
++    find(0x10DE, 0x2684, &device);
++    assert(device.bus == 1 && device.type == DEV_TYPE_GPU && device.revision == 0xA1);
++
++    /* subsystem IDs, interrupt line and capabilities */
++    find(0x8086, 0x100E, &device);
++    assert(device.subsystem_vendor_id == 0x1AF4 && device.subsystem_id == 0x1100);
++    assert(device.irq_line == 11);
++    assert(device.msi_cap_offset == 0x40 && device.pcie_cap_offset == 0x50 &&
++           device.msix_cap_offset == 0x70);
++    find(0x144D, 0xA808, &device);
++    assert(device.class_code == 0x01 && device.subclass == 0x08 &&
++           device.programming_interface == 0x02);
++    assert(device.msi_cap_offset == 0 && device.msix_cap_offset == 0 && device.pcie_cap_offset == 0);
++
++    /* identifiers are unique and non-zero */
++    for (index = 0; index < dev_device_count(); ++index) {
++        BauraDevice other;
++        uint32_t second;
++        assert(dev_get_device(index, &device) == BAURA_OK && device.device_id != 0);
++        for (second = index + 1; second < dev_device_count(); ++second) {
++            assert(dev_get_device(second, &other) == BAURA_OK);
++            assert(other.device_id != device.device_id);
++        }
++    }
++}
++
++static void test_capability_list_is_bounded(void) {
++    FakeHost host;
++    BauraPciPortBackend backend;
++    BauraDevice device;
++    FakeFunction *fn;
++
++    /* A list that points at itself must not hang discovery. */
++    memset(&host, 0, sizeof(host));
++    fn = add_function(&host, 0, 1, 0, 0x1111, 0x2222, 0x02, 0x00, 0x00, 0x00);
++    fn->cfg[1] = 0x00100000u;
++    fn->cfg[0x34 / 4] = 0x40;
++    fn->cfg[0x40 / 4] = 0x00004001u;   /* power management, next = itself */
++    /* A pointer into the standard header is ignored. */
++    fn = add_function(&host, 0, 2, 0, 0x3333, 0x4444, 0x02, 0x00, 0x00, 0x00);
++    fn->cfg[1] = 0x00100000u;
++    fn->cfg[0x34 / 4] = 0x10;
++    /* The list is only honoured when the status bit says it exists. */
++    fn = add_function(&host, 0, 3, 0, 0x5555, 0x6666, 0x02, 0x00, 0x00, 0x00);
++    fn->cfg[0x34 / 4] = 0x40;
++    fn->cfg[0x40 / 4] = 0x00000005u;
++
++    make_backend(&host, &backend);
++    dev_device_manager_init();
++    assert(baura_pci_port_backend_install(&backend) == BAURA_OK);
++    assert(dev_discover_pci() == BAURA_OK && dev_device_count() == 3);
++    find(0x1111, 0x2222, &device);
++    assert(device.msi_cap_offset == 0 && device.msix_cap_offset == 0 && device.pcie_cap_offset == 0);
++    find(0x3333, 0x4444, &device);
++    assert(device.msi_cap_offset == 0);
++    find(0x5555, 0x6666, &device);
++    assert(device.msi_cap_offset == 0);
++}
++
++static void test_rediscovery_keeps_bindings(void) {
++    FakeHost host;
++    BauraPciPortBackend backend;
++    BauraDevice before, after, other;
++    uint32_t count_before;
++    uint32_t index;
++
++    build_machine(&host);
++    make_backend(&host, &backend);
++    dev_device_manager_init();
++    assert(baura_pci_port_backend_install(&backend) == BAURA_OK);
++    probe_calls = 0;
++    assert(dev_register_driver(DEV_TYPE_STORAGE, probe_count, (void *)(uintptr_t)7) == BAURA_OK);
++    assert(dev_discover_pci() == BAURA_OK);
++    assert(probe_calls == 1);
++    find(0x144D, 0xA808, &before);
++    assert(before.driver_attached == 1 && before.driver_handle == (void *)(uintptr_t)7);
++    count_before = dev_device_count();
++
++    /* scanning again changes nothing for devices that are still there */
++    assert(dev_discover_pci() == BAURA_OK);
++    find(0x144D, 0xA808, &after);
++    assert(dev_device_count() == count_before);
++    assert(after.device_id == before.device_id);
++    assert(after.driver_attached == 1 && after.driver_handle == (void *)(uintptr_t)7);
++    assert(probe_calls == 1);   /* the driver was not probed a second time */
++
++    /* a new device gets a new identifier; the others keep theirs */
++    add_function(&host, 0, 9, 0, 0x8086, 0x10D3, 0x02, 0x00, 0x00, 0x00);
++    assert(dev_discover_pci() == BAURA_OK);
++    assert(dev_device_count() == count_before + 1);
++    find(0x8086, 0x10D3, &other);
++    for (index = 0; index < dev_device_count(); ++index) {
++        BauraDevice device;
++        assert(dev_get_device(index, &device) == BAURA_OK);
++        assert(device.device_id <= other.device_id);
++    }
++    find(0x144D, 0xA808, &after);
++    assert(after.device_id == before.device_id && after.driver_attached == 1);
++
++    /* a device that disappeared leaves the list */
++    host.functions[1].present = 0;   /* the Ethernet controller */
++    assert(dev_discover_pci() == BAURA_OK);
++    assert(dev_device_count() == count_before);
++    for (index = 0; index < dev_device_count(); ++index) {
++        BauraDevice device;
++        assert(dev_get_device(index, &device) == BAURA_OK);
++        assert(!(device.vendor_id == 0x8086 && device.product_id == 0x100E));
++    }
++
++    /* a read failure on the whole bus yields an empty list, not a crash */
++    host.fail_in = 1;
++    assert(dev_discover_pci() == BAURA_OK && dev_device_count() == 0);
++}
++
++static void test_registry_limits(void) {
++    uint32_t index;
++    dev_device_manager_init();
++    assert(dev_register_driver((DeviceType)BAURA_DEVICE_TYPE_COUNT, probe_count, 0) ==
++           BAURA_ERR_INVALID_ARGUMENT);
++    assert(dev_register_driver(DEV_TYPE_WIRELESS, probe_count, 0) == BAURA_OK);
++    for (index = 0; index < BAURA_DRIVER_PROBE_CAPACITY - 1u; ++index)
++        assert(dev_register_pci_driver(0x1000, (uint16_t)index, probe_count, 0) == BAURA_OK);
++    assert(dev_register_pci_driver(0x1000, 0xFFFE, probe_count, 0) == BAURA_ERR_CAPACITY);
++    assert(BAURA_DRIVER_PROBE_CAPACITY >= 64u && BAURA_DEVICE_CAPACITY >= 256u);
++}
++
++static void test_report_format(void) {
++    BauraDevice device;
++    char line[BAURA_DEVICE_REPORT_LINE_MAX];
++    char small[16];
++    memset(&device, 0, sizeof(device));
++    device.bus = 0; device.slot = 3; device.function = 0;
++    device.vendor_id = 0x8086; device.product_id = 0x100E;
++    device.class_code = 0x02; device.subclass = 0x00; device.programming_interface = 0x00;
++    device.revision = 0x03; device.type = DEV_TYPE_NETWORK;
++    assert(baura_device_format_line(&device, line, sizeof(line)) ==
++           strlen("PCI 00:03.0 8086:100e class 02.00.00 rev 03 network\r\n"));
++    assert(strcmp(line, "PCI 00:03.0 8086:100e class 02.00.00 rev 03 network\r\n") == 0);
++
++    device.bus = 0xAB; device.slot = 0x1F; device.function = 7;
++    device.vendor_id = 0x10DE; device.product_id = 0x2684; device.type = DEV_TYPE_USB_HOST;
++    device.class_code = 0x0C; device.subclass = 0x03; device.programming_interface = 0x30;
++    device.revision = 0xA1;
++    assert(baura_device_format_line(&device, line, sizeof(line)) != 0);
++    assert(strcmp(line, "PCI ab:1f.7 10de:2684 class 0c.03.30 rev a1 usb-host\r\n") == 0);
++
++    assert(baura_device_format_line(&device, small, sizeof(small)) == 0);
++    assert(baura_device_format_line(0, line, sizeof(line)) == 0);
++    assert(baura_device_format_line(&device, 0, sizeof(line)) == 0);
++    assert(strcmp(baura_device_type_name((DeviceType)BAURA_DEVICE_TYPE_COUNT), "unknown") == 0);
++}
++
++int main(void) {
++    test_address_and_validation();
++    test_port_errors_and_reentrancy();
++    test_discovery_and_classification();
++    test_capability_list_is_bounded();
++    test_rediscovery_keeps_bindings();
++    test_registry_limits();
++    test_report_format();
++    puts("pci_backend_test: all tests passed");
++    return 0;
++}
+diff --git a/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md b/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
+index c25d593..10981c9 100644
+--- a/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
++++ b/KERNEL/BAURA_CORE/DEVICE_DRIVER_STATUS.md
+@@ -1,26 +1,66 @@
+ # Device discovery and driver status
+ 
++The development plan for drivers (listing, matching, updates, driver sources)
++is in [`DRIVER_DEVELOPMENT_GUIDE.md`](./DRIVER_DEVELOPMENT_GUIDE.md). This file
++records what exists and how far it has been verified.
++
+ ## Current implementation
+ 
+-BAURA Core contains a host-testable PCI inventory registry in
++BAURA Core contains a PCI inventory registry in
+ `DEVICE_MANAGER/BAURA_DEVICE_MGR.c`. It enumerates bus/slot/function data
+-through the injected `BauraPciConfigRead` callback, classifies broad PCI
+-classes, and invokes registered C probe callbacks. The Core startup initializes
+-the registry, but does not install a PCI reader. The default Multiboot image
+-and the x86_64 Core archive therefore do not detect physical devices.
++through the injected `BauraPciConfigRead` callback, fills a `BauraDevice` per
++function, classifies it, and invokes registered C probe callbacks.
++
++For the x86_64 seL4 target the reader comes from two files in `BOOT/SEL4/`:
++
++- `pci_backend.c`: portable logic for PCI configuration mechanism #1 (address
++  port `0xCF8`, data port `0xCFC`). Port access is injected, so it has no seL4
++  dependency.
++- `pci_backend_sel4.c`: the seL4 binding. It issues one I/O-port capability for
++  `0xCF8-0xCFF` from `seL4_CapIOPortControl` into the first free root-CNode
++  slot (addressed with depth `seL4_WordBits`, because the root CNode has a guard)
++  and installs the reader with `dev_set_pci_reader()`.
++
++`BOOT/SEL4/initial_task.c` installs the backend after Core startup, calls
++`baura_hardware_refresh()`, and prints one line per device on the debug
++console (`DEVICE_MANAGER/baura_device_report.c`).
++
++### Removed prototypes
++
++`DEVICE_MANAGER/pci_scanner.c` and `pci_scanner_enhanced.c` were removed. They
++were not part of the build, called `printf`, `outl` and `inl` without declaring
++them, performed ring-0 port I/O that cannot run in an seL4 user task, and the
++"enhanced" one only printed simulated ACPI messages. Their role is now covered
++by `BOOT/SEL4/pci_backend*.c` and the registry. They remain available in git
++history (last present in commit `86642c0`) if their content is needed.
++
++### Verification state
+ 
+-The current interfaces are scaffolding, not a complete PnP or driver stack:
++- Covered by host tests (`make test-boot`, `make test-core`): configuration
++  address encoding, argument validation, port-error handling, re-entrancy
++  refusal, discovery against a fake PCI host (multi-function devices, a second
++  bus, subsystem IDs, capability lists including a looping list), classification,
++  stable identifiers across rescans, registry limits, and the console line format.
++- **Not verified:** `pci_backend_sel4.c` has not been built against the
++  generated seL4 headers, and nothing has booted. The call signatures were read
++  from the pinned seL4 sources (`seL4_X86_IOPortControl_Issue`,
++  `seL4_X86_IOPort_In32`, `seL4_X86_IOPort_Out32`). Whether the kernel grants
++  the port range, and what the device list looks like on a booted system, is
++  unknown until the initial task runs under QEMU or on hardware.
+ 
+ | Capability | State |
+ | --- | --- |
+ | PC serial console | A 16550-compatible COM1 driver is integrated in the existing 32-bit Multiboot kernel using direct ring-0 port I/O; intended for QEMU/compatible legacy PC boot, not seL4 |
+-| PCI inventory parsing | Implemented against an injected configuration-space reader; host fixture only |
+-| PCI hardware access | No real backend; the older `pci_scanner.c` is not in the build and is not a seL4 adapter |
+-| Device classification | Broad PCI class/subclass groups only |
+-| Driver matching | Exact PCI vendor/device ID registration plus legacy broad type matching |
++| PCI inventory | Implemented; host-tested against a fake PCI host |
++| PCI hardware access (seL4 x86_64) | Implemented in `BOOT/SEL4/`; unbuilt against generated seL4 headers and unbooted. Mechanism #1 reaches only the first 256 bytes of configuration space and is not atomic (callers must serialise) |
++| Device identity | Vendor/device ID, subsystem vendor/ID (header type 0), class/subclass/programming interface, revision, bus/slot/function, IRQ line, MSI/MSI-X/PCIe capability offsets, and a `device_id` that stays stable across rescans |
++| Classification | storage, network, GPU, input (PCI class `0x09`), USB host, bridge, audio, wireless, other |
++| Driver matching | Exact PCI vendor/device ID first, then broad device type; the first successful probe wins. No subsystem, class/prog-if or priority matching yet |
++| Registry capacity | 256 devices, 64 driver registrations |
++| Rescan | A device found again at the same location keeps its `device_id` and driver binding; a device that disappeared leaves the list. There is no unbind callback for removed devices yet |
+ | Driver execution | In-process C probe callback; no driver image loading, isolation, task lifecycle, or resource delegation |
+ | Driver lifecycle | Rust crate defines a platform-backend contract; no concrete seL4 backend is bound |
+-| Resource assignment | Not implemented; BAR values are retained as raw PCI config dwords with a validity mask and are not mapped or authorized |
++| Resource assignment | Not implemented; BAR values are retained as raw PCI config dwords with a validity mask and are not sized, mapped or authorized; MSI/MSI-X are located but not configured |
+ | Non-PCI discovery | No USB, ACPI device enumeration, ACPI namespace, or device-tree discovery service |
+ | ABI exposure | No device-enumeration or driver-management operation in API/ABI v2 |
+ 
+@@ -37,12 +77,12 @@ authorization, stable device identity, hotplug semantics, returned metadata,
+ and errors. Do not expose raw physical addresses, kernel capability slots, or
+ the current callback structures as an application ABI.
+ 
+-For the x86_64 seL4 target, a platform adapter must obtain device configuration
+-and resource authority through the selected boot/capability setup, validate
+-that authority, and expose a narrow backend to Core. Core policy must not do
+-port I/O, map BARs, assign IRQs, or mint seL4 capabilities itself. The current
+-Makefile builds the seL4 kernel and Core archive separately; there is no such
+-adapter in the integrated boot path.
++For the x86_64 seL4 target, the platform adapter obtains device configuration
++and resource authority through the boot capability setup and exposes a narrow
++backend to Core. Core policy must not do port I/O, map BARs, assign IRQs, or
++mint seL4 capabilities itself; that stays in `BOOT/SEL4/`. The initial task
++keeps one running free-slot cursor (`seL4_BootInfo.empty`) shared by everything
++that needs new root-CNode slots.
+ 
+ The other files under `KERNEL/L4` that contain custom x86_64 paging, interrupt,
+ or syscall fragments are not wired into the configured seL4 build and are not
+@@ -52,9 +92,9 @@ the selected device backend. They must not be mixed into the seL4 kernel path.
+ 
+ PCI vendor IDs can identify a PCI function, not a complete retail product,
+ driver compatibility, or support level. Examples include Intel `8086`, NVIDIA
+-`10DE`, AMD `1002`, Qualcomm/Atheros `168C` and Qualcomm `17CB`, and Samsung
+-`144D`. These IDs are examples for cataloguing and matching only; no vendor
+-driver is included or implied.
++`10DE`, AMD `1002` (GPU) and `1022` (chipset/CPU), Qualcomm/Atheros `168C` and
++Qualcomm `17CB`, and Samsung `144D`. These IDs are examples for cataloguing and
++matching only; no vendor driver is included or implied.
+ 
+ Support must be built per device ID, revision, bus, firmware and required
+ features. PCI enumeration alone cannot find Logitech USB peripherals
+@@ -67,16 +107,17 @@ working USB/UART controller, transport driver, firmware and Bluetooth stack.
+ ## Next implementation gates
+ 
+ 1. Select and boot the real x86_64 seL4 initial task; document its BootInfo and
+-   device/I/O/IRQ capabilities.
+-2. Implement a seL4-specific PCI configuration/resource backend outside the
+-   portable Core. Validate it against the exact generated seL4 API and provide
+-   negative tests for missing or insufficient capabilities.
++   device/I/O/IRQ capabilities. Confirm on a booted system (QEMU `q35`) that the
++   `0xCF8-0xCFF` capability is granted and that the device list printed by the
++   initial task matches the machine's actual devices.
++2. Add negative tests for the seL4 binding: missing or insufficient
++   capabilities, an exhausted `empty` region.
+ 3. Replace in-process probe callbacks with versioned driver metadata, exact
+    match tables, explicit resource requirements, and isolated task loading
+    through the platform backend. Keep broad class matching as fallback only.
+-4. Add bus-specific discovery and services (ACPI/PCIe/USB for the selected PC
+-   target); add a separate ARM64 ACPI/device-tree path before claiming
+-   Snapdragon support.
++4. Add bus-specific discovery and services (ECAM/MCFG, ACPI, xHCI/USB for the
++   selected PC target); add a separate ARM64 ACPI/device-tree path before
++   claiming Snapdragon support.
+ 5. Define device-management API/ABI operations only when their authorization,
+    lifetime, hotplug, metadata and error contracts are complete.
+ 6. Validate using emulated PCI devices, malformed configuration responses,
+diff --git a/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c b/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c
+index 03f2f02..1f97bd6 100644
+--- a/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c
++++ b/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c
+@@ -1,5 +1,12 @@
+ #include "BAURA_DEVICE_MGR.h"
+ 
++#define PCI_CAP_ID_PCIE 0x10u
++#define PCI_CAP_ID_MSI 0x05u
++#define PCI_CAP_ID_MSIX 0x11u
++/* A valid list lives in offsets 0x40..0xFC, four bytes per entry at minimum. */
++#define PCI_CAP_LIST_MAX_ENTRIES 48u
++#define PCI_CAP_LIST_FIRST_OFFSET 0x40u
++
+ typedef struct {
+     DeviceType type;
+     uint16_t vendor_id;
+@@ -9,22 +16,68 @@ typedef struct {
+     uint8_t match_pci_id;
+     uint8_t active;
+ } DriverProbe;
++
++/* What a rescan needs to remember about a device found by the previous scan. */
++typedef struct {
++    uint32_t device_id;
++    uint16_t vendor_id;
++    uint16_t product_id;
++    uint8_t bus;
++    uint8_t slot;
++    uint8_t function;
++    uint8_t driver_attached;
++    void *driver_handle;
++} KnownDevice;
++
+ static BauraDevice devices[BAURA_DEVICE_CAPACITY];
++static KnownDevice known[BAURA_DEVICE_CAPACITY];
+ static DriverProbe drivers[BAURA_DRIVER_PROBE_CAPACITY];
+ static BauraPciConfigRead pci_reader;
+ static void *pci_context;
+ static uint32_t device_count;
++static uint32_t known_count;
++static uint32_t next_device_id;
+ 
+ static int read_config(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset, uint32_t *value) {
+     return pci_reader != 0 && pci_reader(bus, slot, function, offset, value, pci_context);
+ }
+ 
+ static DeviceType classify(uint8_t class_code, uint8_t subclass) {
+-    if (class_code == 0x01) return DEV_TYPE_STORAGE;
+-    if (class_code == 0x02) return DEV_TYPE_NETWORK;
+-    if (class_code == 0x03) return DEV_TYPE_GPU;
+-    if (class_code == 0x0C && (subclass == 0x03 || subclass == 0x05 || subclass == 0x80)) return DEV_TYPE_INPUT;
+-    return DEV_TYPE_OTHER;
++    switch (class_code) {
++    case 0x01: return DEV_TYPE_STORAGE;
++    case 0x02: return DEV_TYPE_NETWORK;
++    case 0x03: return DEV_TYPE_GPU;
++    case 0x04: return (subclass == 0x01 || subclass == 0x03) ? DEV_TYPE_AUDIO : DEV_TYPE_OTHER;
++    case 0x06: return DEV_TYPE_BRIDGE;
++    case 0x09: return DEV_TYPE_INPUT;
++    case 0x0C: return subclass == 0x03 ? DEV_TYPE_USB_HOST : DEV_TYPE_OTHER;
++    case 0x0D: return DEV_TYPE_WIRELESS;
++    default: return DEV_TYPE_OTHER;
++    }
++}
++
++/*
++ * Walks the capability list. The walk is bounded so that a malformed or
++ * looping list cannot hang discovery; a failed read ends the walk and keeps
++ * what was found so far.
++ */
++static void read_capabilities(BauraDevice *device) {
++    uint32_t status_command, pointer_register, pointer, hops;
++    if (device->header_type > 1u) return;
++    if (!read_config(device->bus, device->slot, device->function, 0x04, &status_command)) return;
++    if (((status_command >> 16) & 0x10u) == 0) return; /* status bit 4: capability list present */
++    if (!read_config(device->bus, device->slot, device->function, 0x34, &pointer_register)) return;
++    pointer = pointer_register & 0xFCu;
++    for (hops = 0; hops < PCI_CAP_LIST_MAX_ENTRIES && pointer >= PCI_CAP_LIST_FIRST_OFFSET; ++hops) {
++        uint32_t header;
++        uint8_t id;
++        if (!read_config(device->bus, device->slot, device->function, (uint8_t)pointer, &header)) return;
++        id = (uint8_t)header;
++        if (id == PCI_CAP_ID_MSI && device->msi_cap_offset == 0) device->msi_cap_offset = (uint8_t)pointer;
++        else if (id == PCI_CAP_ID_MSIX && device->msix_cap_offset == 0) device->msix_cap_offset = (uint8_t)pointer;
++        else if (id == PCI_CAP_ID_PCIE && device->pcie_cap_offset == 0) device->pcie_cap_offset = (uint8_t)pointer;
++        pointer = (header >> 8) & 0xFCu;
++    }
+ }
+ 
+ static void attach_matching_drivers(BauraDevice *device) {
+@@ -52,9 +105,38 @@ static void attach_matching_drivers(BauraDevice *device) {
+     }
+ }
+ 
++static const KnownDevice *find_known(const BauraDevice *device) {
++    uint32_t index;
++    for (index = 0; index < known_count; ++index) {
++        const KnownDevice *entry = &known[index];
++        if (entry->bus == device->bus && entry->slot == device->slot &&
++            entry->function == device->function &&
++            entry->vendor_id == device->vendor_id &&
++            entry->product_id == device->product_id)
++            return entry;
++    }
++    return 0;
++}
++
++static void remember_current_devices(void) {
++    uint32_t index;
++    for (index = 0; index < device_count; ++index) {
++        known[index].device_id = devices[index].device_id;
++        known[index].vendor_id = devices[index].vendor_id;
++        known[index].product_id = devices[index].product_id;
++        known[index].bus = devices[index].bus;
++        known[index].slot = devices[index].slot;
++        known[index].function = devices[index].function;
++        known[index].driver_attached = devices[index].driver_attached;
++        known[index].driver_handle = devices[index].driver_handle;
++    }
++    known_count = device_count;
++}
++
+ void dev_device_manager_init(void) {
+     uint32_t index;
+-    device_count = 0; pci_reader = 0; pci_context = 0;
++    device_count = 0; known_count = 0; next_device_id = 1;
++    pci_reader = 0; pci_context = 0;
+     for (index = 0; index < BAURA_DRIVER_PROBE_CAPACITY; ++index) drivers[index].active = 0;
+ }
+ 
+@@ -65,7 +147,7 @@ BauraStatus dev_set_pci_reader(BauraPciConfigRead reader, void *context) {
+ 
+ BauraStatus dev_register_driver(DeviceType type, BauraDeviceProbe probe, void *context) {
+     uint32_t index;
+-    if (probe == 0 || (uint32_t)type > (uint32_t)DEV_TYPE_OTHER) return BAURA_ERR_INVALID_ARGUMENT;
++    if (probe == 0 || (uint32_t)type >= BAURA_DEVICE_TYPE_COUNT) return BAURA_ERR_INVALID_ARGUMENT;
+     for (index = 0; index < BAURA_DRIVER_PROBE_CAPACITY; ++index) if (drivers[index].active && !drivers[index].match_pci_id && drivers[index].type == type) {
+         drivers[index].probe = probe; drivers[index].context = context;
+         for (uint32_t device = 0; device < device_count; ++device) if (devices[device].type == type && devices[device].driver_attached == 0) attach_matching_drivers(&devices[device]);
+@@ -124,6 +206,7 @@ BauraStatus dev_register_pci_driver(uint16_t vendor_id, uint16_t product_id,
+ BauraStatus dev_discover_pci(void) {
+     uint16_t bus;
+     if (pci_reader == 0) return BAURA_ERR_INVALID_STATE;
++    remember_current_devices();
+     device_count = 0;
+     for (bus = 0; bus < 256; ++bus) {
+         uint8_t slot;
+@@ -138,7 +221,8 @@ BauraStatus dev_discover_pci(void) {
+             if (!read_config((uint8_t)bus, slot, 0, 0x0C, &header)) continue;
+             if (((header >> 16) & 0x80u) != 0) function_limit = 8;
+             for (function = 0; function < function_limit; ++function) {
+-                uint32_t identity, class_register, function_header, interrupt;
++                uint32_t identity, class_register, function_header, interrupt, subsystem;
++                const KnownDevice *previous;
+                 BauraDevice *device;
+                 if (function == 0) identity = function_zero_identity;
+                 else if (!read_config((uint8_t)bus, slot, function, 0x00,
+@@ -152,7 +236,6 @@ BauraStatus dev_discover_pci(void) {
+                 (void)read_config((uint8_t)bus, slot, function, 0x3C, &interrupt);
+                 device = &devices[device_count++];
+                 *device = (BauraDevice){0};
+-                device->device_id = device_count;
+                 device->vendor_id = (uint16_t)identity; device->product_id = (uint16_t)(identity >> 16);
+                 device->revision = (uint8_t)class_register;
+                 device->programming_interface = (uint8_t)(class_register >> 8);
+@@ -169,7 +252,25 @@ BauraStatus dev_discover_pci(void) {
+                                     &device->bars[bar]))
+                         device->bar_valid_mask |= (uint8_t)(1u << bar);
+                 }
+-                device->driver_handle = 0; device->driver_attached = 0; attach_matching_drivers(device);
++                if (device->header_type == 0 &&
++                    read_config((uint8_t)bus, slot, function, 0x2C, &subsystem)) {
++                    device->subsystem_vendor_id = (uint16_t)subsystem;
++                    device->subsystem_id = (uint16_t)(subsystem >> 16);
++                }
++                read_capabilities(device);
++                device->driver_handle = 0; device->driver_attached = 0;
++                previous = find_known(device);
++                if (previous != 0) {
++                    device->device_id = previous->device_id;
++                    if (previous->driver_attached) {
++                        /* Same device as in the previous scan: keep its binding. */
++                        device->driver_handle = previous->driver_handle;
++                        device->driver_attached = 1;
++                    }
++                } else {
++                    device->device_id = next_device_id++;
++                }
++                if (!device->driver_attached) attach_matching_drivers(device);
+             }
+         }
+     }
+diff --git a/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.h b/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.h
+index 3fba992..fca0315 100644
+--- a/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.h
++++ b/KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.h
+@@ -4,22 +4,36 @@
+ #include <stdint.h>
+ #include "../baura_core_types.h"
+ 
+-#define BAURA_DEVICE_CAPACITY 128u
+-#define BAURA_DRIVER_PROBE_CAPACITY 16u
++#define BAURA_DEVICE_CAPACITY 256u
++#define BAURA_DRIVER_PROBE_CAPACITY 64u
+ #define BAURA_PCI_BAR_COUNT 6u
+ 
++/*
++ * Broad device categories derived from the PCI class code. Values 0-4 are
++ * stable; new categories are appended.
++ */
+ typedef enum {
+     DEV_TYPE_STORAGE = 0,
+     DEV_TYPE_NETWORK = 1,
+     DEV_TYPE_GPU = 2,
+-    DEV_TYPE_INPUT = 3,
+-    DEV_TYPE_OTHER = 4
++    DEV_TYPE_INPUT = 3,     /* PCI class 0x09 input device controllers */
++    DEV_TYPE_OTHER = 4,
++    DEV_TYPE_USB_HOST = 5,  /* PCI class 0x0C, subclass 0x03 */
++    DEV_TYPE_BRIDGE = 6,    /* PCI class 0x06 */
++    DEV_TYPE_AUDIO = 7,     /* PCI class 0x04, subclass 0x01 or 0x03 */
++    DEV_TYPE_WIRELESS = 8   /* PCI class 0x0D */
+ } DeviceType;
+ 
++#define BAURA_DEVICE_TYPE_COUNT 9u
++
+ typedef struct {
++    /* Stable for the lifetime of the registry: a device that is found again
++     * by a later scan at the same location keeps its identifier. */
+     uint32_t device_id;
+     uint16_t vendor_id;
+     uint16_t product_id;
++    uint16_t subsystem_vendor_id;  /* header type 0 only, otherwise 0 */
++    uint16_t subsystem_id;         /* header type 0 only, otherwise 0 */
+     uint8_t class_code;
+     uint8_t subclass;
+     uint8_t programming_interface;
+@@ -29,6 +43,11 @@ typedef struct {
+     uint8_t slot;
+     uint8_t function;
+     uint8_t irq_line;
++    /* Offsets of the capability structures in configuration space, or 0 when
++     * the device does not expose them. */
++    uint8_t msi_cap_offset;
++    uint8_t msix_cap_offset;
++    uint8_t pcie_cap_offset;
+     uint8_t bar_count;
+     uint8_t bar_valid_mask;
+     DeviceType type;
+@@ -42,8 +61,11 @@ typedef int (*BauraPciConfigRead)(uint8_t bus, uint8_t slot, uint8_t function, u
+ typedef BauraStatus (*BauraDeviceProbe)(BauraDevice *device, void *context);
+ 
+ void dev_device_manager_init(void);
+-/* Installs a platform-supplied reader; Core does not access PCI ports here. */
++/* Installs a platform-supplied reader; Core does not access PCI ports here.
++ * The reader returns non-zero on success and 0 when the read failed. */
+ BauraStatus dev_set_pci_reader(BauraPciConfigRead reader, void *context);
++/* Scans the bus and rebuilds the device list. Devices found again at the same
++ * location keep their identifier and driver binding. */
+ BauraStatus dev_discover_pci(void);
+ BauraStatus dev_register_driver(DeviceType type, BauraDeviceProbe probe, void *context);
+ BauraStatus dev_register_pci_driver(uint16_t vendor_id, uint16_t product_id,
+diff --git a/KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c b/KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c
+new file mode 100644
+index 0000000..fc6d73e
+--- /dev/null
++++ b/KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c
+@@ -0,0 +1,59 @@
++#include "baura_device_report.h"
++
++const char *baura_device_type_name(DeviceType type) {
++    switch (type) {
++    case DEV_TYPE_STORAGE: return "storage";
++    case DEV_TYPE_NETWORK: return "network";
++    case DEV_TYPE_GPU: return "gpu";
++    case DEV_TYPE_INPUT: return "input";
++    case DEV_TYPE_OTHER: return "other";
++    case DEV_TYPE_USB_HOST: return "usb-host";
++    case DEV_TYPE_BRIDGE: return "bridge";
++    case DEV_TYPE_AUDIO: return "audio";
++    case DEV_TYPE_WIRELESS: return "wireless";
++    default: return "unknown";
++    }
++}
++
++static char *put_hex(char *out, uint32_t value, unsigned digits) {
++    static const char hex[] = "0123456789abcdef";
++    while (digits > 0) {
++        --digits;
++        *out++ = hex[(value >> (digits * 4u)) & 0xFu];
++    }
++    return out;
++}
++
++static char *put_text(char *out, const char *text) {
++    while (*text != '\0') *out++ = *text++;
++    return out;
++}
++
++size_t baura_device_format_line(const BauraDevice *device, char *buffer, size_t capacity) {
++    char *out = buffer;
++    if (device == 0 || buffer == 0 || capacity < BAURA_DEVICE_REPORT_LINE_MAX) return 0;
++    out = put_text(out, "PCI ");
++    out = put_hex(out, device->bus, 2);
++    *out++ = ':';
++    out = put_hex(out, device->slot, 2);
++    *out++ = '.';
++    out = put_hex(out, device->function, 1);
++    *out++ = ' ';
++    out = put_hex(out, device->vendor_id, 4);
++    *out++ = ':';
++    out = put_hex(out, device->product_id, 4);
++    out = put_text(out, " class ");
++    out = put_hex(out, device->class_code, 2);
++    *out++ = '.';
++    out = put_hex(out, device->subclass, 2);
++    *out++ = '.';
++    out = put_hex(out, device->programming_interface, 2);
++    out = put_text(out, " rev ");
++    out = put_hex(out, device->revision, 2);
++    *out++ = ' ';
++    out = put_text(out, baura_device_type_name(device->type));
++    *out++ = '\r';
++    *out++ = '\n';
++    *out = '\0';
++    return (size_t)(out - buffer);
++}
+diff --git a/KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.h b/KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.h
+new file mode 100644
+index 0000000..9a5be90
+--- /dev/null
++++ b/KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.h
+@@ -0,0 +1,20 @@
++#ifndef BAURA_DEVICE_REPORT_H
++#define BAURA_DEVICE_REPORT_H
++
++#include <stddef.h>
++#include "BAURA_DEVICE_MGR.h"
++
++/* Smallest buffer that baura_device_format_line() accepts. */
++#define BAURA_DEVICE_REPORT_LINE_MAX 64u
++
++const char *baura_device_type_name(DeviceType type);
++
++/*
++ * Formats one console line, lspci-style and without libc, e.g.
++ *   "PCI 00:03.0 8086:100e class 02.00.00 rev 03 network\r\n"
++ * Returns the number of characters written (not counting the terminating NUL),
++ * or 0 when the arguments are invalid or the buffer is too small.
++ */
++size_t baura_device_format_line(const BauraDevice *device, char *buffer, size_t capacity);
++
++#endif
+diff --git a/KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner.c b/KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner.c
+deleted file mode 100644
+index fa5b012..0000000
+--- a/KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner.c
++++ /dev/null
+@@ -1,32 +0,0 @@
+-
+-/* Legacy ring-0 port-I/O prototype; not a seL4 or userspace PCI backend. */
+-#include "BAURA_DEVICE_MGR.h"
+-#include <stdint.h>
+-
+-// Ports PCI standards
+-#define PCI_CONFIG_ADDRESS 0xCF8
+-#define PCI_CONFIG_DATA    0xCFC
+-
+-uint32_t pci_read_config(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset) {
+-    uint32_t address = (uint32_t)((uint32_t)0x80000000 |
+-                       ((uint32_t)bus << 16) |
+-                       ((uint32_t)slot << 11) |
+-                       ((uint32_t)func << 8) |
+-                       ((uint32_t)offset & 0xFC));
+-
+-    outl(PCI_CONFIG_ADDRESS, address);
+-    return inl(PCI_CONFIG_DATA);
+-}
+-
+-void dev_discover_all() {
+-    for (int bus = 0; bus < 256; bus++) {
+-        for (int slot = 0; slot < 32; slot++) {
+-            uint32_t vendor_id = pci_read_config(bus, slot, 0, 0) & 0xFFFF;
+-            if (vendor_id != 0xFFFF) {
+-                // Périphérique trouvé ! On l'enregistre dans le Device Manager
+-                printf("[Hardware] Found Device: Bus %d, Slot %d, Vendor ID 0x%X\n", bus, slot, vendor_id);
+-                // On associe ici le driver correspondant (USB, GPU, Network)
+-            }
+-        }
+-    }
+-}
+diff --git a/KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner_enhanced.c b/KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner_enhanced.c
+deleted file mode 100644
+index 447f55b..0000000
+--- a/KERNEL/BAURA_CORE/DEVICE_MANAGER/pci_scanner_enhanced.c
++++ /dev/null
+@@ -1,30 +0,0 @@
+-
+-/* Placeholder only: ACPI/PCI discovery below is simulated and unintegrated. */
+-#include "BAURA_DEVICE_MGR.h"
+-#include <stdint.h>
+-
+-// ACPI Table detection for real hardware power/thermal management
+-void acpi_discover_tables() {
+-    uintptr_t rsdp = 0;
+-    // Scan BIOS memory for RSDP (Root System Description Pointer)
+-    // Simulation: Find RSDP -> Parse FADT -> Get Thermal Zone info
+-    printf("[Hardware] ACPI Tables discovered. Thermal zones mapped.\n");
+-}
+-
+-void dev_discover_all_enhanced() {
+-    acpi_discover_tables();
+-
+-    // PCI Scan
+-    for (int bus = 0; bus < 256; bus++) {
+-        for (int slot = 0; slot < 32; slot++) {
+-            uint32_t vendor_id = pci_read_config(bus, slot, 0, 0) & 0xFFFF;
+-            if (vendor_id != 0xFFFF) {
+-                // Detect if it's an USB Controller or GPU
+-                if (vendor_id == 0x8086) { // Intel
+-                    printf("[Hardware] Intel Device found at %d:%d\n", bus, slot);
+-                }
+-                // Map to l4_driver_iso_spawn()
+-            }
+-        }
+-    }
+-}
+diff --git a/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+new file mode 100644
+index 0000000..17826bd
+--- /dev/null
++++ b/KERNEL/BAURA_CORE/DRIVER_DEVELOPMENT_GUIDE.md
+@@ -0,0 +1,580 @@
++# BAURA OS — Guide des pilotes : développement, listing, attribution, mise à jour
++
++Ce guide décrit comment faire de BAURA OS un système capable de **détecter la
++majorité des matériels x86_64, d'attribuer le bon pilote et de le mettre à
++jour**, en commençant par des pilotes open source.
++
++Il complète [`DEVICE_DRIVER_STATUS.md`](./DEVICE_DRIVER_STATUS.md), qui est la
++référence sur **ce qui existe et son niveau de vérification**. Les structures et
++API marquées **(proposition)** n'existent pas encore dans le dépôt.
++
++---
++
++## 1. Objectif et point de départ
++
++### 1.1 Ce qui existe
++
++- Le registre de périphériques (`DEVICE_MANAGER/BAURA_DEVICE_MGR.c`) parcourt
++  le PCI via un lecteur injecté, remplit un `BauraDevice` par fonction, le
++  classe, et appelle les `probe()` enregistrés.
++- Un **backend PCI pour l'initial task seL4 x86_64** (`BOOT/SEL4/pci_backend.c`
++  et `pci_backend_sel4.c`) fournit ce lecteur : il obtient une capability
++  d'I/O pour les ports `0xCF8–0xCFF` puis installe le lecteur. L'initial task
++  l'appelle après le démarrage du Core et affiche la liste des appareils.
++  Il est testé sur hôte avec un faux hôte PCI ; il n'a pas encore été compilé
++  avec les en-têtes seL4 générés ni démarré (voir le statut).
++- Les pilotes s'enregistrent par type ou par couple exact vendor/device. Le
++  `probe()` s'exécute **dans le même espace d'adressage** que le Core.
++- Le crate Rust `DRIVER_MANAGER` définit un contrat de lancement de pilote
++  isolé (`spawn_driver`, `is_task_alive`, `terminate_task`) ; aucun backend seL4
++  n'y est branché.
++
++### 1.2 Ce que veut dire "lire la majorité des matériels"
++
++Il n'existe pas de liste d'ID à écrire une fois pour toutes. La couverture
++vient de trois leviers, à combiner :
++
++1. **Pilotes de classes standard** (un pilote = des milliers de produits) :
++   AHCI, NVMe, xHCI + USB HID/stockage, HD Audio, virtio, framebuffer UEFI.
++2. **Pilotes par famille** pour ce qui n'est pas standardisé : Ethernet
++   (Intel e1000/igb, Realtek r8169), Wi-Fi, GPU. Chacun demande documentation,
++   firmware et beaucoup de tests.
++3. **Réutilisation de pilotes open source existants** via une couche de
++   compatibilité (§8). C'est ce qui rend réaliste une large couverture.
++
++Un pilote GPU Intel/AMD/NVIDIA natif complet est un chantier de longue durée.
++Pour l'affichage, le framebuffer fourni par le bootloader suffit longtemps.
++
++---
++
++## 2. Architecture cible
++
++```
++   Énumérateurs de bus             Registre                 Attribution
++ ┌─────────────────────┐    ┌───────────────────┐    ┌─────────────────────┐
++ │ PCI (ports puis     │    │  BauraDevice[]    │    │  Matcher à score    │
++ │ ECAM/MCFG)          │───►│  identité stable  │───►│  + liste noire      │
++ │ ACPI, USB (xHCI)    │    │  ressources       │    │  + choix utilisateur│
++ └─────────────────────┘    └───────────────────┘    └──────────┬──────────┘
++                                                                │ candidats
++                                                                ▼
++ ┌────────────────────┐   ┌───────────────────┐    ┌─────────────────────┐
++ │ Magasin de pilotes │──►│ Lanceur (backend  │───►│ Tâche pilote seL4   │
++ │ (paquets signés)   │   │ seL4, via Rust)   │    │ avec capabilities   │
++ └────────────────────┘   └───────────────────┘    └─────────────────────┘
++        ▲                                                    │
++        │ mise à jour (§6)                                   ▼
++        └────────────── Fault/Recovery engine ◄───── santé, crash, redémarrage
++```
++
++Règles de séparation :
++
++- Le **Core ne fait ni port I/O, ni mapping de BAR, ni attribution d'IRQ, ni
++  création de capabilities seL4**. Tout cela passe par un backend de plateforme
++  dans `BOOT/SEL4/`.
++- Un pilote ne reçoit **que** les ressources de son appareil.
++- `BauraDevice` est une structure interne, **pas** une ABI applicative.
++- Le curseur de slots libres du CNode racine (`seL4_BootInfo.empty`) est
++  partagé : tout code qui crée une capability prend son slot dans ce curseur
++  (voir `initial_task.c`).
++
++---
++
++## 3. Développer un pilote BAURA
++
++### 3.1 Deux étapes de maturité
++
++**Étape 1 — pilote intégré (in-process).** C'est le modèle actuel
++(`BauraDeviceProbe`). Rapide à écrire, aucune isolation : un bug plante le
++Core. À réserver aux pilotes de démarrage (UART).
++
++**Étape 2 — pilote isolé (tâche seL4).** Cible pour tout le reste. Le pilote est
++un exécutable séparé, lancé par le gestionnaire de pilotes, qui reçoit des
++capabilities explicites. Un crash n'emporte que lui, et il peut être relancé.
++
++### 3.2 Anatomie d'un pilote isolé (proposition)
++
++Un pilote expose un **descripteur** (ce qu'il gère, ce dont il a besoin) et un
++**cycle de vie** :
++
++```c
++/* Proposition — à placer dans un en-tête partagé (SDK pilote). */
++typedef struct {
++    uint16_t vendor_id;      /* 0xFFFF = joker */
++    uint16_t device_id;      /* 0xFFFF = joker */
++    uint16_t subvendor_id;   /* 0xFFFF = joker */
++    uint16_t subdevice_id;   /* 0xFFFF = joker */
++    uint8_t  class_code;     /* 0xFF   = joker */
++    uint8_t  subclass;       /* 0xFF   = joker */
++    uint8_t  prog_if;        /* 0xFF   = joker */
++    uint8_t  revision_min;
++    uint8_t  revision_max;   /* 0xFF = pas de borne */
++} BauraPciMatch;
++
++typedef struct {
++    uint32_t abi_version;            /* version de l'interface pilote */
++    uint32_t struct_size;
++    const char *name;                /* "ahci", "nvme", "xhci"… */
++    uint32_t driver_version;         /* monotone, sert à la mise à jour */
++    DeviceType device_type;
++    const BauraPciMatch *matches;    /* table d'IDs gérés */
++    uint32_t match_count;
++    uint32_t required_bars;          /* masque des BAR à recevoir */
++    uint32_t flags;                  /* NEEDS_DMA, NEEDS_MSI, NEEDS_FIRMWARE… */
++} BauraDriverDescriptor;
++
++typedef struct {
++    BauraStatus (*probe)(const BauraDevice *dev);     /* appareil compatible ? */
++    BauraStatus (*start)(BauraDriverContext *ctx);    /* initialiser, mapper */
++    BauraStatus (*stop)(BauraDriverContext *ctx);     /* arrêt propre */
++    void        (*on_irq)(BauraDriverContext *ctx);
++} BauraDriverOps;
++```
++
++Règles :
++
++- `probe()` **ne modifie rien** : il lit l'identité et répond "compatible /
++  non". Toute initialisation va dans `start()`.
++- `stop()` remet l'appareil dans un état sûr (DMA arrêté, IRQ masquées) pour
++  permettre un redémarrage ou une mise à jour à chaud.
++- Aucune allocation non bornée, aucun blocage dans `on_irq`.
++
++### 3.3 Ce qu'un pilote reçoit sous seL4
++
++Un pilote n'a **aucun accès implicite** au matériel. Le lanceur lui délègue,
++selon ses besoins (noms vérifiés dans les sources de la version de seL4
++épinglée par le sous-module) :
++
++| Besoin | Mécanisme seL4 (x86_64) |
++| --- | --- |
++| Registres mappés en mémoire (BAR MMIO) | Untyped "device" du BootInfo (`isDevice`) → frames → mappés dans le VSpace du pilote |
++| Ports d'E/S (ex. PS/2 `0x60/0x64`, UART `0x3F8`) | Capability `seL4_X86_IOPort` émise par `seL4_X86_IOPortControl_Issue` depuis `seL4_CapIOPortControl`, pour la plage exacte |
++| Interruptions | Capability IRQ via `seL4_CapIRQControl` (IOAPIC ou MSI) + notification |
++| Mémoire DMA | Frames dont le pilote peut obtenir l'adresse physique |
++| Protection DMA | **IOMMU (VT-d)** : sans lui, un appareil peut lire/écrire toute la RAM par DMA |
++
++Points d'attention :
++
++- Un slot de CNode racine de l'initial task s'adresse avec la profondeur
++  `seL4_WordBits` (le CNode racine a un guard), pas avec `initThreadCNodeSizeBits`.
++- Le **DMA contourne les protections du processeur** : prévoir tôt l'activation
++  de l'IOMMU (`-device intel-iommu` sous QEMU pour tester).
++- Les BAR doivent être **mesurés** (taille, 64 bits, MMIO ou port) avant d'être
++  mappés ; le registre ne conserve aujourd'hui que les dwords bruts.
++
++### 3.4 Interface de classe (ce que voit le reste de l'OS)
++
++Un pilote ne parle pas directement aux applications. Il s'enregistre auprès d'un
++service de classe, via les interfaces déjà présentes dans le Core :
++
++- **Stockage** : callbacks de blocs consommés par `volume_manager` (LBA
++  vérifiés) puis le VFS. Le crate `USERSPACE/DRIVERS/STORAGE_DRIVERS` définit
++  déjà des points d'entrée `driver_init / driver_read / driver_write` à aligner
++  avec cette interface.
++- **Réseau** : callback d'émission de trames consommé par `baura_network`
++  (MTU validé).
++- **Entrée** : événements clavier/souris vers le bus d'événements / la GUI.
++- **Affichage** : framebuffer pour `GUI/DISPLAY_SERVER`.
++
++### 3.5 Checklist d'un nouveau pilote
++
++1. Lire la spécification (AHCI, NVMe, xHCI… sont publiques).
++2. Écrire d'abord le **descripteur** (table d'IDs + besoins).
++3. Écrire un **test hôte** avec un faux appareil (registres simulés), comme le
++   faux hôte PCI de `BOOT/tests/pci_backend_test.c`.
++4. Tester sous **QEMU** avec l'appareil émulé correspondant (§9).
++5. Gérer : timeout sur chaque attente de registre, erreurs du matériel, arrêt
++   propre, double `start()`.
++6. Tester le crash volontaire du pilote et son redémarrage.
++
++---
++
++## 4. Le listing des périphériques
++
++### 4.1 Ce que collecte le registre
++
++Pour chaque fonction PCI trouvée :
++
++| Information | Détail |
++| --- | --- |
++| Emplacement | bus / slot / fonction (fonctions 1–7 explorées si l'appareil est multi-fonction) |
++| Identité | vendor ID, device ID, **subsystem vendor/ID** (variantes OEM), classe, sous-classe, interface de programmation, révision |
++| Ressources | BAR (dwords bruts + masque de validité), ligne d'interruption |
++| Capacités | offsets des capabilities **MSI, MSI-X, PCIe** (liste parcourue de façon bornée) |
++| Identifiant | `device_id` **stable** : un appareil retrouvé au même emplacement garde son identifiant et sa liaison de pilote d'un scan à l'autre |
++
++Classification à partir de la classe PCI :
++
++| Classe PCI | `DeviceType` |
++| --- | --- |
++| `0x01` (stockage de masse : SATA, NVMe…) | `DEV_TYPE_STORAGE` |
++| `0x02` (réseau) | `DEV_TYPE_NETWORK` |
++| `0x03` (affichage) | `DEV_TYPE_GPU` |
++| `0x04`, sous-classe `0x01` ou `0x03` (audio, HD Audio) | `DEV_TYPE_AUDIO` |
++| `0x06` (ponts) | `DEV_TYPE_BRIDGE` |
++| `0x09` (contrôleurs d'entrée) | `DEV_TYPE_INPUT` |
++| `0x0C`, sous-classe `0x03` (USB) | `DEV_TYPE_USB_HOST` |
++| `0x0D` (sans fil) | `DEV_TYPE_WIRELESS` |
++| autre | `DEV_TYPE_OTHER` |
++
++Les périphériques d'entrée courants (clavier/souris USB) ne sont **pas**
++visibles en PCI : ils apparaissent comme appareils USB derrière un contrôleur
++xHCI, donc via un énumérateur USB (§4.3).
++
++Capacités du registre : 256 appareils, 64 enregistrements de pilotes.
++
++### 4.2 Règles du backend d'accès
++
++- Le Core ne fait **aucun** accès au matériel : il reçoit un `BauraPciConfigRead`
++  qui retourne non nul en cas de succès et 0 en cas d'échec.
++- Le backend actuel utilise le mécanisme #1 (ports `0xCF8/0xCFC`) :
++  il n'atteint que les **256 premiers octets** de configuration, et l'accès en
++  deux temps (adresse, puis donnée) n'est **pas atomique** : un seul appelant à la
++  fois, le backend refuse seulement un appel ré-entrant.
++- Les accès invalides sont rejetés avant tout accès matériel (slot ≥ 32,
++  fonction ≥ 8, offset non aligné sur 4).
++- Le Core ne suppose jamais qu'une réponse est valide : une lecture qui échoue
++  fait ignorer la fonction ou le champ concerné, sans bloquer le scan.
++
++### 4.3 Prochaines étapes du listing
++
++| Étape | Pourquoi | Jalon |
++| --- | --- | --- |
++| Démarrer l'initial task et vérifier la liste réelle sous QEMU | Tant que ce n'est pas fait, la détection n'est pas démontrée | M1/M2 |
++| **ECAM** (table ACPI MCFG) | Accès au PCIe étendu (au-delà de 256 octets) | M3 |
++| Mesure des BAR (taille, 64 bits, MMIO/port) | Nécessaire avant tout mapping ; exige une lecture/écriture de configuration et de couper le décodage pendant la mesure | M3 |
++| Configuration MSI/MSI-X | Les appareils modernes l'utilisent ; les offsets sont déjà localisés | M5 |
++| Événements d'ajout/retrait + rappel de retrait côté pilote | Hotplug ; aujourd'hui un appareil disparu quitte la liste sans notifier son pilote | M5 |
++| Énumérateur USB (après le pilote xHCI) | Clavier, souris, stockage USB | M8 |
++| ACPI (au-delà du RSDP fourni par le BootInfo) | Appareils non PCI, thermique, énergie | M8 |
++| État de liaison par appareil visible (`UNSUPPORTED`, `BOUND`…) | Dire à l'utilisateur ce qui manque | M4 |
++
++### 4.4 Vendor IDs utiles pour le catalogue
++
++Ils servent à **cataloguer et nommer** ; ils ne disent pas qu'un pilote existe.
++
++| Fabricant | Vendor ID PCI |
++| --- | --- |
++| Intel | `0x8086` |
++| AMD (chipset / CPU) | `0x1022` |
++| AMD / ATI (GPU) | `0x1002` |
++| NVIDIA | `0x10DE` |
++| Realtek | `0x10EC` |
++| Broadcom | `0x14E4` |
++| Qualcomm Atheros | `0x168C` |
++| MediaTek | `0x14C3` |
++| Samsung (NVMe) | `0x144D` |
++| virtio / Red Hat | `0x1AF4` |
++
++---
++
++## 5. Attribution des bons pilotes
++
++### 5.1 Mécanisme actuel
++
++`attach_matching_drivers()` fait deux passes : d'abord les enregistrements par
++couple exact vendor/device, ensuite ceux par type d'appareil. Dans chaque passe,
++le **premier pilote dont `probe()` réussit** est retenu. Un appareil déjà lié
++n'est pas re-sondé lors d'un nouveau scan.
++
++### 5.2 Algorithme cible à score (proposition)
++
++Pour chaque appareil, calculer un score par descripteur :
++
++| Niveau de correspondance | Score |
++| --- | --- |
++| vendor + device + subvendor + subdevice (+ révision dans la plage) | 100 |
++| vendor + device (+ révision) | 80 |
++| vendor + classe + sous-classe + prog-if | 50 |
++| classe + sous-classe + prog-if (pilote générique : AHCI, xHCI, NVMe) | 30 |
++| classe + sous-classe | 10 |
++
++Étapes :
++
++1. Écarter les descripteurs en **liste noire** (par ID, ou par paire
++   pilote/ID connu défectueux).
++2. Calculer les scores ; trier par score décroissant, puis par
++   `driver_version` décroissante.
++3. Appliquer l'éventuel **choix explicite** (configuration ou politique).
++4. Essayer les candidats **dans l'ordre** : si `probe()` ou `start()` échoue,
++   passer au suivant, en journalisant la cause.
++5. Si aucun ne convient : état `UNSUPPORTED`, tracé dans le journal.
++
++### 5.3 Pilote spécifique ou générique
++
++- Privilégier les **pilotes de classe** (AHCI, NVMe, xHCI, HD Audio), qui
++  couvrent la plupart des machines.
++- Ajouter des **pilotes spécifiques** seulement quand le générique est
++  insuffisant ou nécessite un contournement lié à une révision.
++- Appareil non reconnu : se rabattre sur le plus simple qui fonctionne
++  (framebuffer pour l'écran, mode compatible pour le disque).
++
++### 5.4 États de liaison (proposition)
++
++```
++UNBOUND ─► CANDIDATE ─► LAUNCHING ─► BOUND ─► (crash) ─► RESTARTING ─► BOUND
++              │            │                                  │
++              └─ UNSUPPORTED  └─ FAILED ─► candidat suivant     └─ QUARANTINED
++```
++
++`driver_attached` signifie seulement qu'un `probe()` a retourné `BAURA_OK`. Le
++nouvel état doit dire si le pilote **tourne et est sain**. Après N crashs
++consécutifs (valeur à fixer), le pilote est mis en quarantaine pour cet appareil ;
++le moteur de récupération (`RECOVERY_ENGINE`) et le journal en gardent la trace.
++
++### 5.5 Hotplug
++
++1. L'énumérateur du bus émet `DEVICE_ADDED` / `DEVICE_REMOVED` via le bus
++   d'événements du Core.
++2. Le matcher traite l'événement pour cet appareil seul.
++3. Au retrait : `stop()` du pilote, révocation de ses capabilities, libération
++   de ses ressources.
++
++---
++
++## 6. Principe et système de mise à jour des pilotes
++
++### 6.1 Objectifs
++
++- Mettre à jour un pilote **sans réinstaller l'OS** et, si possible, **sans
++  redémarrer** (un pilote est une tâche).
++- Ne jamais pouvoir bloquer le système avec un mauvais pilote : **retour
++  arrière automatique**.
++- N'accepter que des pilotes **authentiques et compatibles**.
++
++### 6.2 Le paquet de pilote (proposition)
++
++Le dépôt possède déjà un format de paquet, **AESB**
++(`PACKAGE_FORMAT/AESB_SPEC.md` : en-tête avec magic `BAURA_AESB`, version,
++identifiant et hash signé ; manifeste JSON ; binaires ; ressources). Un pilote
++est livré dans ce **même conteneur**, avec un manifeste de type pilote, plutôt
++que dans un format distinct. La spécification AESB doit être complétée avec :
++
++- un champ `type` (`"app"` ou `"driver"`) ;
++- pour un pilote : table d'IDs gérés, ressources requises, version d'ABI
++  pilote, version minimale de l'OS, firmware nécessaire, indicateur "critique au
++  démarrage".
++
++Exemple de manifeste pilote :
++
++```json
++{
++  "type": "driver",
++  "name": "nvme",
++  "version": "1.4.2",
++  "driver_abi": 1,
++  "min_os": "0.3.0",
++  "matches": [
++    { "class": "01", "subclass": "08", "prog_if": "02" }
++  ],
++  "resources": { "bars": [0], "irq": "msix", "dma": true },
++  "boot_critical": true
++}
++```
++
++### 6.3 Le magasin de pilotes
++
++Un dossier géré par l'OS (sur le volume système, au format de chemin VFS
++`PC/<volume>:/…`) contient les paquets installés, plus un **index** `ID →
++pilotes candidats` reconstruit à l'installation d'un paquet, pas à chaque
++démarrage. L'index alimente le matcher (§5).
++
++Les pilotes **critiques au démarrage** (disque système, USB clavier, écran,
++UART) sont aussi présents dans l'**initrd** (`BOOT/INITRD`). Sinon, il serait
++impossible de lire le magasin pour charger le pilote du disque qui le contient.
++
++Règles de version :
++
++- `driver_version` est **monotone** : un paquet plus ancien que celui installé
++  est refusé (sauf retour arrière déclenché par le système).
++- Un `driver_abi` incompatible laisse le paquet installé mais inactif.
++
++### 6.4 Procédure de mise à jour
++
++Le Core possède déjà un gestionnaire de mise à jour (machine à états vérifier /
++appliquer / retour arrière, qui délègue aux callbacks d'un backend). On le
++réutilise :
++
++1. **Obtenir** le paquet (hors ligne ou dépôt ; le téléchargement relève du
++   réseau, pas du Core).
++2. **Vérifier** : signature, hash de chaque fichier, `driver_abi`, version
++   supérieure, absence de la liste noire.
++3. **Installer en zone temporaire** (staging) ; ne rien activer.
++4. **Mettre à jour l'index** de façon atomique (écrire à côté, puis basculer).
++5. **Basculer** :
++   - appareil libre : `stop()` de l'ancien, lancement du nouveau ;
++   - appareil en usage (disque, réseau) : plan de reprise explicite, ou
++     **activation au prochain démarrage** pour les pilotes critiques.
++6. **Surveiller** : chien de garde pendant une période d'essai (démarrage
++   réussi, aucun crash, réponse aux requêtes de santé).
++7. **Valider** la version si tout va bien ; sinon **retour arrière** vers la
++   version précédente (conservée jusqu'à validation) et quarantaine de la
++   nouvelle.
++
++### 6.5 Sécurité
++
++- **Aucun pilote non signé** par défaut. Définir la chaîne de confiance (clé
++  publique du projet dans l'image, rotation de clés prévue).
++- Le manifeste déclare les capabilities voulues ; le lanceur **n'en donne pas
++  plus** que ce que l'appareil justifie.
++- IOMMU actif pour borner le DMA (§3.3).
++- Journaliser chaque installation, bascule, retour arrière et quarantaine.
++
++### 6.6 Firmware
++
++Le **firmware** d'un appareil (Wi-Fi, GPU, contrôleurs) est chargé par le
++pilote au démarrage de l'appareil ; il voyage avec le paquet (hash propre).
++Flasher le firmware de la machine (BIOS, SSD) est une opération distincte et
++plus risquée, hors périmètre initial.
++
++---
++
++## 7. Priorités de couverture matérielle (x86_64 PC)
++
++| Priorité | Pilote | Matériel couvert | Remarque |
++| --- | --- | --- | --- |
++| 1 | UART 16550 | Console de debug | **Déjà fait** (chemin legacy 32 bits) |
++| 2 | Framebuffer UEFI/GRUB | Écran, tous fabricants | Transmis dans le BootInfo (en-tête `SEL4_BOOTINFO_HEADER_X86_FRAMEBUFFER`) ; suffit à la GUI |
++| 3 | AHCI | Disques SATA | Pilote de classe |
++| 4 | NVMe | SSD modernes | Pilote de classe |
++| 5 | PS/2 clavier/souris | Portables, QEMU | `ps2_driver.cpp` existe : ports `0x60/0x64` + IRQ 1/12 |
++| 6 | xHCI + USB HID + stockage | Clavier, souris, clés USB | Gros chantier, très grande couverture |
++| 7 | virtio (blk, net) | Machines virtuelles | Simple, excellent pour les tests |
++| 8 | Ethernet (e1000/igb, r8169) | Intel, Realtek | Les deux familles les plus courantes |
++| 9 | HD Audio | Son | Pilote de classe |
++| 10 | Wi-Fi, Bluetooth | Portables | Firmware, pile réseau, très long |
++| 11 | GPU accéléré | Intel/AMD/NVIDIA | Très long ; Intel/AMD d'abord |
++
++---
++
++## 8. Sources de pilotes : open source d'abord, puis sous licence, puis propriétaire
++
++### 8.1 Les trois phases
++
++| Phase | Sources | Conditions | Exemples |
++| --- | --- | --- | --- |
++| **1 — Open source** (maintenant) | Pilotes dont le code source est publié sous licence libre | Licence compatible avec celle de BAURA (voir §8.4), traçabilité, obligations respectées | AHCI/NVMe/xHCI/e1000/HD Audio issus de projets BSD ou Linux ; modules open source NVIDIA ; piles graphiques Mesa/DRM |
++| **2 — Pilotes sous licence** | Pilotes ou composants fournis dans le cadre d'**accords** (fabricant, OEM, éditeur) | Droits de redistribution **écrits**, conditions de mise à jour, support | Firmware Wi-Fi redistribuable, pilotes fournis par un partenaire matériel |
++| **3 — Matériel propriétaire** | Matériel dont la pile est fermée ou la documentation non publique | Documentation ou coopération du fabricant ; chaque famille est un projet à part | GPU et chipsets dont seul le pilote fermé existe |
++
++Chaque phase réutilise **le même mécanisme** : paquet AESB signé (§6), tâche
++isolée, capabilities minimales, liste noire, retour arrière. Seule change la
++**provenance** du code. Un pilote fermé reste donc dans un processus isolé et
++n'a pas plus de droits qu'un pilote open source.
++
++### 8.2 Mécanisme technique pour la phase 1
++
++Écrire à la main tous les pilotes n'est pas réaliste. Les systèmes à
++microkernel font souvent tourner du code de pilote existant en espace
++utilisateur grâce à une **couche de compatibilité** :
++
++- **Rump kernels (NetBSD)** : pilotes NetBSD exécutés en espace utilisateur.
++- **Device Driver Environment (DDE)**, par exemple dans Genode : pilotes Linux
++  portés avec une couche d'émulation de l'API noyau.
++
++Le pilote réutilisé tourne comme n'importe quelle tâche pilote (§3), derrière une
++interface de classe (§3.4). La couche d'adaptation est un composant à part
++entière, à écrire et à maintenir.
++
++### 8.3 Registre des composants tiers (proposition)
++
++Aucun code tiers n'entre dans le dépôt sans une ligne dans un fichier
++`THIRD_PARTY_DRIVERS.md` :
++
++| Champ | Contenu |
++| --- | --- |
++| Nom, version | ex. pilote AHCI, révision précise |
++| Origine | dépôt, tag ou commit |
++| Licence | identifiant SPDX, **fichier par fichier** si elles diffèrent |
++| Fichiers retenus | et modifications apportées |
++| Obligations | notice, attribution, publication du source |
++| Phase | 1, 2 ou 3 |
++| État de test | matériel et émulateur sur lesquels il a été validé |
++
++Le dépôt traite déjà ce sujet pour les icônes
++(`KERNEL/L4/ROADMAP_BOOT_GUI_INTEGRATION.md` : dépôt, révision, licence, notices) ;
++la même discipline s'applique aux pilotes.
++
++### 8.4 Licences : ce qu'il faut décider avant d'importer du code
++
++- **Le dépôt ne contient aujourd'hui aucun fichier de licence à la racine.** Il
++  faut choisir la licence de BAURA **avant** d'intégrer du code tiers : c'est elle
++  qui détermine ce qui est compatible.
++- **Licences permissives** (MIT, BSD, ISC, Apache-2.0) : à privilégier en
++  phase 1, car elles imposent peu d'obligations (notices à conserver).
++- **Licences à copyleft** (GPL, LGPL) : possibles, mais leurs obligations
++  (publication du source, conditions de redistribution) doivent être comprises
++  avant de s'engager ; l'isolation en processus séparé aide à délimiter le
++  composant concerné, sans dispenser d'une analyse.
++- **Firmware** : les blobs (Wi-Fi, GPU) ont leurs propres licences,
++  généralement pas libres ; ils relèvent plutôt de la phase 2.
++- Ce document n'est pas un avis juridique : faire valider la politique de
++  licences avant de distribuer une image contenant des composants sous
++  copyleft ou sous accord commercial.
++
++### 8.5 Où trouver du code open source par famille
++
++| Famille | Piste (à confirmer fichier par fichier) |
++| --- | --- |
++| Stockage (AHCI, NVMe), USB (xHCI), Ethernet, HD Audio | Pilotes des systèmes BSD (licences BSD) en priorité ; Linux (GPLv2) quand il n'existe pas d'alternative |
++| GPU Intel / AMD | Piles ouvertes Linux/Mesa : Mesa est largement sous licence MIT, mais les parties noyau mélangent des licences, à vérifier par fichier |
++| GPU NVIDIA | Les modules noyau ouverts de NVIDIA sont publiés en double licence MIT/GPLv2 ([documentation NVIDIA](https://download.nvidia.com/XFree86/Linux-x86_64/595.84/README/kernel_open.html)) ; ils sont écrits pour le noyau Linux et semblent s'appuyer sur le firmware GSP (blob propriétaire), à confirmer avant de planifier un portage |
++| Wi-Fi | Pilotes open source + firmware propriétaire : phase 1 pour le pilote, phase 2 pour le firmware |
++
++---
++
++## 9. Tests et validation
++
++Ce guide ne peut pas établir qu'un matériel est supporté ; seuls les tests le
++font. Un pilote n'est "supporté" que s'il a passé :
++
++1. **Tests hôte** avec lecteur de configuration simulé. Existants :
++   `make test-boot` (`BOOT/tests/pci_backend_test.c` : backend, adressage,
++   erreurs, ré-entrance, découverte, classification, rescan, formatage) et
++   `make test-core`. À ajouter : réponses malformées, BAR incohérents,
++   capacité pleine.
++2. **QEMU** avec appareils émulés : `-device ich9-ahci` (AHCI),
++   `-device nvme,serial=…` (NVMe), `-device qemu-xhci` (USB 3), `-device e1000`,
++   `-device virtio-net-pci`, `-device intel-hda` (audio), `-device intel-iommu`
++   (IOMMU). `-machine q35` donne un PC PCIe moderne. `make run-sel4-x86_64`
++   lance l'ISO avec `-serial stdio` : la liste affichée par l'initial task
++   (`BAURA_INIT: PCI devices found: N`, puis une ligne par appareil) doit
++   correspondre aux appareils ajoutés.
++3. **Tests négatifs sur les capabilities** : le pilote reçoit moins que ce dont
++   il a besoin → échec propre, pas de blocage.
++4. **Tests de panne** : tuer le pilote, vérifier relance, quarantaine, et
++   retour arrière après mise à jour défectueuse.
++5. **Matériel réel** : au moins un PC Intel et un AMD avant de déclarer le
++   support d'une famille. Tenir une **matrice de compatibilité** (appareil,
++   révision, pilote, état, date du test).
++
++---
++
++## 10. Feuille de route et critères d'acceptation
++
++| Jalon | Contenu | État | Critère de réussite |
++| --- | --- | --- | --- |
++| M1 | Initial task seL4 qui démarre sous QEMU | À faire | Message de démarrage de l'initial task visible sur la console |
++| M2 | Backend PCI seL4 + installation par l'initial task | **Code écrit et testé sur hôte** ; à vérifier au démarrage (dépend de M1) | La liste d'une machine QEMU affiche les bons vendor/device |
++| M3 | Listing complet : classification, sous-IDs, capacités, identifiants stables, capacités du registre | **Fait** (testé sur hôte). Reste : ECAM, mesure des BAR | Tests hôte verts + comparaison avec `lspci -nn` d'une VM de référence |
++| M4 | Catalogue de descripteurs + matcher à score + états de liaison (§5) | À faire | Tests : spécifique > générique, repli après échec de `probe`, liste noire |
++| M5 | Backend de lancement isolé (contrat Rust → tâches seL4) + délégation de capabilities + hotplug + MSI | À faire | Un pilote trivial tourne comme tâche, crashe et redémarre sans toucher au Core |
++| M6 | **Premiers pilotes open source (phase 1)** : framebuffer, AHCI ou virtio-blk, PS/2 ; registre `THIRD_PARTY_DRIVERS.md` et choix de la licence | À faire | Lecture d'un bloc de disque sous QEMU via le VFS ; clavier utilisable |
++| M7 | Magasin de pilotes + paquets AESB signés + mise à jour avec retour arrière (§6) | À faire | Mise à jour réussie ; mise à jour volontairement défectueuse annulée automatiquement |
++| M8 | xHCI/USB, Ethernet, audio ; IOMMU ; ACPI | À faire | Clavier USB et réseau fonctionnels sous QEMU puis sur un PC réel |
++| M9 | **Pilotes sous licence (phase 2)** : accords, firmware redistribuable | À faire | Au moins un composant sous accord intégré avec ses droits de redistribution documentés |
++| M10 | **Matériel propriétaire (phase 3)**, famille par famille | À faire | Une famille cible documentée, implémentée et testée sur matériel réel |
++
++Chaque jalon met à jour `DEVICE_DRIVER_STATUS.md` : on n'y écrit "supporté" que
++ce qui est **testé**.
++
++---
++
++## Annexe : hors périmètre pour l'instant
++
++- Support ARM64/Snapdragon (chemin séparé : ACPI/device-tree + autres
++  contrôleurs).
++- Exposition d'une API/ABI applicative d'énumération de périphériques : à
++  définir seulement une fois les contrats d'autorisation, de durée de vie, de
++  hotplug et d'erreurs complets (cf. `DEVICE_DRIVER_STATUS.md`).
++- Flashage de firmware machine (BIOS/SSD).
+diff --git a/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.c b/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.c
+index bf61710..73b1b30 100644
+--- a/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.c
++++ b/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.c
+@@ -15,9 +15,10 @@ BauraStatus baura_hardware_get_summary(BauraHardwareSummary *summary) {
+     if (!manager_ready) return BAURA_ERR_INVALID_STATE;
+     if (summary == 0) return BAURA_ERR_INVALID_ARGUMENT;
+     summary->total = 0;
+-    for (index = 0; index < 5; ++index) summary->by_type[index] = 0;
++    for (index = 0; index < BAURA_DEVICE_TYPE_COUNT; ++index) summary->by_type[index] = 0;
+     for (index = 0; index < dev_device_count(); ++index) {
+-        if (dev_get_device(index, &device) != BAURA_OK) return BAURA_ERR_INVALID_STATE;
++        if (dev_get_device(index, &device) != BAURA_OK ||
++            (uint32_t)device.type >= BAURA_DEVICE_TYPE_COUNT) return BAURA_ERR_INVALID_STATE;
+         ++summary->total; ++summary->by_type[(uint32_t)device.type];
+     }
+     return BAURA_OK;
+diff --git a/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.h b/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.h
+index 2236b80..1f531ff 100644
+--- a/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.h
++++ b/KERNEL/BAURA_CORE/HARDWARE_MANAGER/baura_hardware_manager.h
+@@ -3,7 +3,7 @@
+ 
+ #include "../DEVICE_MANAGER/BAURA_DEVICE_MGR.h"
+ 
+-typedef struct { uint32_t total; uint32_t by_type[5]; } BauraHardwareSummary;
++typedef struct { uint32_t total; uint32_t by_type[BAURA_DEVICE_TYPE_COUNT]; } BauraHardwareSummary;
+ 
+ void hardware_manager_init(void);
+ BauraStatus baura_hardware_refresh(void);
+diff --git a/KERNEL/BAURA_CORE/README.md b/KERNEL/BAURA_CORE/README.md
+index 8626686..d6a3b09 100644
+--- a/KERNEL/BAURA_CORE/README.md
++++ b/KERNEL/BAURA_CORE/README.md
+@@ -13,7 +13,7 @@ BAURA Core is a freestanding service layer above the low-level kernel. The legac
+ - Resource manager: per-owner counter quotas, initially deny-by-default. It is accounting, not a physical allocator.
+ - Monitoring and performance: fixed-size metric history and overflow-safe counters; sampling sources are not connected to hardware yet.
+ - Fault and recovery: bounded fault history and code-to-handler dispatch. Recovery handlers must implement any actual restart or remediation.
+-- Device and driver managers: PCI enumeration through an injected config-space reader, broad class classification, and in-process probe callbacks. Exact vendor/device registration is supported, but the boot image has no PCI backend, resource assignment, isolated driver loading, or device ABI. See [`DEVICE_DRIVER_STATUS.md`](./DEVICE_DRIVER_STATUS.md).
++- Device and driver managers: PCI enumeration through an injected config-space reader, class-based classification (storage, network, GPU, input, USB host, bridge, audio, wireless), subsystem IDs, MSI/MSI-X/PCIe capability offsets, stable device identifiers across rescans, and in-process probe callbacks. Exact vendor/device registration is supported. A PCI configuration backend for the x86_64 seL4 initial task exists in `BOOT/SEL4/` but is host-tested only; there is no resource assignment, isolated driver loading, or device ABI. See [`DEVICE_DRIVER_STATUS.md`](./DEVICE_DRIVER_STATUS.md) and [`DRIVER_DEVELOPMENT_GUIDE.md`](./DRIVER_DEVELOPMENT_GUIDE.md).
+ - Rust driver isolation crate: exposes a versioned platform-backend contract for spawn, liveness checks and termination; calls fail explicitly until a backend is installed. It no longer fabricates task/address-space identifiers. This contract is not itself a seL4 adapter; host tests exercise only the injected backend contract.
+ - Hardware manager: summarizes discovered devices when a platform PCI reader is installed.
+ - Storage and volume manager: bounded volume registry with LBA checks over injected block callbacks; no physical block driver is installed at boot.
+@@ -25,7 +25,7 @@ BAURA Core is a freestanding service layer above the low-level kernel. The legac
+ - Security: bounded C capability policy tables with revocation and attenuating delegation, initialized at boot. They are not seL4 capabilities. The initial-task platform can bind an explicit authority-check callback; authorization returns `BAURA_ERR_INVALID_STATE` when no checker is installed rather than allowing by default. The callback still needs a concrete seL4 service/capability implementation.
+ - VFS: the C path API resolves canonical `PC/<volume>:/...` paths against registered volume IDs and normalizes separators and `.` components while rejecting traversal. The Rust parser remains a separate reference implementation. There is still no mounted filesystem operation table or physical filesystem implementation.
+ - System API/ABI v2: `SYSTEM_API/API_ABI_v2.json` defines the normative wire contract and `SYSTEM_API/baura_abi_v2.h` exposes its scalar types, stable status/error values, capability names, opcodes, and reference-operation IDs. `SYSTEM_API/baura_ipc_v2.c` encodes/decodes frames byte-by-byte and validates the five reference request/response shapes. `make test-abi` first checks JSON/header consistency with the standard-library Python checker, then runs host codec tests; it is included by `make test-core`. ABI codec behavior is host-tested, but there is not yet a seL4 IPC transport or service dispatcher, nor filesystem/process/memory/network backends.
+-- Initial task entry: `SYSTEM_API/baura_core_initial_task_start` requires a versioned platform contract, an opaque boot-info pointer, and a platform-supplied validator before initializing Core. `BOOT/SEL4/initial_task.c` is the x86_64 seL4 adapter: it consumes BootInfo using the configured seL4 headers, validates the fixed boot-info fields and capability-slot regions, and uses `seL4_DebugPutChar` for console output. `BOOT/SEL4/initial_task_start.S` establishes a userspace stack and passes the initial `RDI` argument to the C entry. It deliberately installs no process or authority backend, so Core's protected operations continue to fail closed. The adapter has not yet been demonstrated by a successful build or boot, and it does not map framebuffer/input devices or launch isolated services.
++- Initial task entry: `SYSTEM_API/baura_core_initial_task_start` requires a versioned platform contract, an opaque boot-info pointer, and a platform-supplied validator before initializing Core. `BOOT/SEL4/initial_task.c` is the x86_64 seL4 adapter: it consumes BootInfo using the configured seL4 headers, validates the fixed boot-info fields and capability-slot regions, and uses `seL4_DebugPutChar` for console output. `BOOT/SEL4/initial_task_start.S` establishes a userspace stack and passes the initial `RDI` argument to the C entry. It deliberately installs no process or authority backend, so Core's protected operations continue to fail closed. The adapter has not yet been demonstrated by a successful build or boot, and it does not map framebuffer/input devices or launch isolated services. After Core startup it installs the PCI configuration backend (`BOOT/SEL4/pci_backend*.c`, which issues one I/O-port capability for ports `0xCF8-0xCFF`) and lists the detected PCI devices on the debug console; that path is host-tested but has not been built against the generated seL4 headers or booted.
+ - UART console adapter: `SYSTEM_API/baura_uart_console_write` adapts the BOOT UART driver to BAURA Core's console callback. The 16550-compatible COM1 serial driver is the first hardware driver integrated into the legacy boot path: `kernel_main` supplies explicit ring-0 x86 port-I/O callbacks, bounded transmit polling, and a 115200-baud divisor. This is for the existing 32-bit Multiboot/QEMU path only; it does not establish a seL4 adapter or broad PCI/USB device support.
+ 
+ The seL4 source is currently declared as a Git submodule at `KERNEL/L4/sel4`
+@@ -100,5 +100,5 @@ environment. This is a bring-up path, not yet evidence of a working OS boot.
+ 2. Add real lock/interrupt rules before calling the Core from multiple tasks.
+ 3. Connect process metadata to actual L4 task lifecycle and security CSpaces.
+ 4. Add a block-device interface and volume registry; then connect VFS resolution to mounted filesystems.
+-5. Implement PCI/device enumeration behind a platform abstraction, followed by individual drivers.
++5. Boot the initial task and confirm PCI enumeration on a real seL4 run (see the gates in `DEVICE_DRIVER_STATUS.md`), then add individual drivers following `DRIVER_DEVELOPMENT_GUIDE.md`.
+ 6. Only then enable network, power, update, virtualization, and graphical services.
+diff --git a/Makefile b/Makefile
+index f3063d6..806cc06 100644
+--- a/Makefile
++++ b/Makefile
+@@ -34,6 +34,7 @@ CORE_SOURCES := \
+     KERNEL/BAURA_CORE/CONFIGURATION/baura_configuration.c \
+     KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c \
+     KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_manager.c \
++    KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c \
+     KERNEL/BAURA_CORE/DRIVER_MANAGER/baura_driver_manager.c \
+     KERNEL/BAURA_CORE/EVENT_BUS/baura_event_bus.c \
+     KERNEL/BAURA_CORE/FAULT_ENGINE/baura_fault_engine.c \
+@@ -123,11 +124,17 @@ sel4-kernel-x86_64: sel4-configure-x86_64
+ sel4-initial-task-x86_64: baura-core-x86_64 sel4-kernel-x86_64 $(SEL4_INITIAL_TASK_ELF)
+ 
+ $(SEL4_INITIAL_TASK_ELF): BOOT/SEL4/initial_task.c \
++		BOOT/SEL4/pci_backend.c BOOT/SEL4/pci_backend.h \
++		BOOT/SEL4/pci_backend_sel4.c BOOT/SEL4/pci_backend_sel4.h \
+ 		BOOT/SEL4/initial_task_start.S BOOT/SEL4/initial_task.ld \
+ 		$(BUILD_DIR)/x86_64/libbaura_core.a
+ 	mkdir -p $(@D)
+ 	$(X86_64_CC) $(X86_64_CFLAGS) -I$(SEL4_STAGE_DIR)/libsel4/include \
+ 		-c BOOT/SEL4/initial_task.c -o $(BUILD_DIR)/x86_64/baura_init.o
++	$(X86_64_CC) $(X86_64_CFLAGS) \
++		-c BOOT/SEL4/pci_backend.c -o $(BUILD_DIR)/x86_64/baura_pci_backend.o
++	$(X86_64_CC) $(X86_64_CFLAGS) -I$(SEL4_STAGE_DIR)/libsel4/include \
++		-c BOOT/SEL4/pci_backend_sel4.c -o $(BUILD_DIR)/x86_64/baura_pci_backend_sel4.o
+ 	$(X86_64_CC) -m64 -c BOOT/SEL4/initial_task_start.S \
+ 		-o $(BUILD_DIR)/x86_64/baura_init_start.o
+ 	$(X86_64_CC) -m64 -nostdlib -static -no-pie \
+@@ -135,6 +142,8 @@ $(SEL4_INITIAL_TASK_ELF): BOOT/SEL4/initial_task.c \
+ 		-Wl,-z,noexecstack -o $@ \
+ 		$(BUILD_DIR)/x86_64/baura_init_start.o \
+ 		$(BUILD_DIR)/x86_64/baura_init.o \
++		$(BUILD_DIR)/x86_64/baura_pci_backend.o \
++		$(BUILD_DIR)/x86_64/baura_pci_backend_sel4.o \
+ 		$(BUILD_DIR)/x86_64/libbaura_core.a
+ 
+ $(SEL4_INITIAL_TASK_ELF): | sel4-kernel-x86_64
+@@ -196,6 +205,12 @@ test-boot:
+ 		-o $(BUILD_DIR)/uefi_memory_map_test \
+ 		BOOT/tests/uefi_memory_map_test.c BOOT/FIRMWARE/UEFI/uefi_mem.c
+ 	$(BUILD_DIR)/uefi_memory_map_test
++	$(HOST_CC) -std=c11 -Wall -Wextra -Werror \
++		-o $(BUILD_DIR)/pci_backend_test \
++		BOOT/tests/pci_backend_test.c BOOT/SEL4/pci_backend.c \
++		KERNEL/BAURA_CORE/DEVICE_MANAGER/BAURA_DEVICE_MGR.c \
++		KERNEL/BAURA_CORE/DEVICE_MANAGER/baura_device_report.c
++	$(BUILD_DIR)/pci_backend_test
+ 
+ test-communication:
+ 	mkdir -p $(BUILD_DIR)
+-- 
+2.43.0
+

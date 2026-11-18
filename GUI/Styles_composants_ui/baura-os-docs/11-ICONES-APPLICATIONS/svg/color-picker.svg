@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="#EA580C"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M11 32A21 21 0 1 1 53 32A21 21 0 1 1 11 32Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M11 32A21 21 0 1 1 53 32A21 21 0 1 1 11 32Z" fill="#FFFFFF"/>
+<path d="M32 11a21 21 0 0 1 18 10.5L32 32Z" fill="#F87171"/>
+<path d="M50 21.5A21 21 0 0 1 50 42.5L32 32Z" fill="#E5C34A"/>
+<path d="M50 42.5A21 21 0 0 1 32 53L32 32Z" fill="#34D399"/>
+<path d="M32 53A21 21 0 0 1 14 42.5L32 32Z" fill="#60A5FA"/>
+<path d="M14 42.5A21 21 0 0 1 14 21.5L32 32Z" fill="#A78BFA"/>
+<path d="M14 21.5A21 21 0 0 1 32 11L32 32Z" fill="#F472B6"/>
+<path d="M25 32A7 7 0 1 1 39 32A7 7 0 1 1 25 32Z" fill="#FFFFFF"/>
+</svg>

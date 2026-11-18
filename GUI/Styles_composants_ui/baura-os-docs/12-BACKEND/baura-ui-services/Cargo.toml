@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = ["crates/baura-prefs", "crates/baura-sysmon", "crates/baura-icons", "crates/baura-shell", "crates/baura-i18n", "crates/baura-ffi"]
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+[profile.release]
+opt-level = 3
+panic = "abort"
+lto = true

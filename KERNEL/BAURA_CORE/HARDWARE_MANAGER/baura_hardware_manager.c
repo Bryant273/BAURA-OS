@@ -15,9 +15,10 @@ BauraStatus baura_hardware_get_summary(BauraHardwareSummary *summary) {
     if (!manager_ready) return BAURA_ERR_INVALID_STATE;
     if (summary == 0) return BAURA_ERR_INVALID_ARGUMENT;
     summary->total = 0;
-    for (index = 0; index < 5; ++index) summary->by_type[index] = 0;
+    for (index = 0; index < BAURA_DEVICE_TYPE_COUNT; ++index) summary->by_type[index] = 0;
     for (index = 0; index < dev_device_count(); ++index) {
-        if (dev_get_device(index, &device) != BAURA_OK) return BAURA_ERR_INVALID_STATE;
+        if (dev_get_device(index, &device) != BAURA_OK ||
+            (uint32_t)device.type >= BAURA_DEVICE_TYPE_COUNT) return BAURA_ERR_INVALID_STATE;
         ++summary->total; ++summary->by_type[(uint32_t)device.type];
     }
     return BAURA_OK;

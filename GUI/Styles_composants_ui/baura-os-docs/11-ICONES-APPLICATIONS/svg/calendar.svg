@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDA4AF"/><stop offset="1" stop-color="#BE123C"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#FFE4E6" stop-opacity="1.00"/></linearGradient>
+<linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDA4AF" stop-opacity="1.00"/><stop offset="1" stop-color="#BE123C" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M19 12H45A8 8 0 0 1 53 20V46A8 8 0 0 1 45 54H19A8 8 0 0 1 11 46V20A8 8 0 0 1 19 12Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M19 12H45A8 8 0 0 1 53 20V46A8 8 0 0 1 45 54H19A8 8 0 0 1 11 46V20A8 8 0 0 1 19 12Z" fill="url(#g1)"/>
+<path d="M11 20a8 8 0 0 1 8-8h26a8 8 0 0 1 8 8v4H11Z" fill="url(#g2)"/>
+<path d="M21.7 8H21.7A1.7 1.7 0 0 1 23.4 9.7V15.3A1.7 1.7 0 0 1 21.7 17H21.7A1.7 1.7 0 0 1 20 15.3V9.7A1.7 1.7 0 0 1 21.7 8Z" fill="#FFFFFF"/>
+<path d="M42.3 8H42.3A1.7 1.7 0 0 1 44 9.7V15.3A1.7 1.7 0 0 1 42.3 17H42.3A1.7 1.7 0 0 1 40.6 15.3V9.7A1.7 1.7 0 0 1 42.3 8Z" fill="#FFFFFF"/>
+<path d="M17.8 30H20.2A1.8 1.8 0 0 1 22 31.8V33.2A1.8 1.8 0 0 1 20.2 35H17.8A1.8 1.8 0 0 1 16 33.2V31.8A1.8 1.8 0 0 1 17.8 30Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M17.8 39H20.2A1.8 1.8 0 0 1 22 40.8V42.2A1.8 1.8 0 0 1 20.2 44H17.8A1.8 1.8 0 0 1 16 42.2V40.8A1.8 1.8 0 0 1 17.8 39Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M17.8 48H20.2A1.8 1.8 0 0 1 22 49.8V51.2A1.8 1.8 0 0 1 20.2 53H17.8A1.8 1.8 0 0 1 16 51.2V49.8A1.8 1.8 0 0 1 17.8 48Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M27.8 30H30.2A1.8 1.8 0 0 1 32 31.8V33.2A1.8 1.8 0 0 1 30.2 35H27.8A1.8 1.8 0 0 1 26 33.2V31.8A1.8 1.8 0 0 1 27.8 30Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M27.8 39H30.2A1.8 1.8 0 0 1 32 40.8V42.2A1.8 1.8 0 0 1 30.2 44H27.8A1.8 1.8 0 0 1 26 42.2V40.8A1.8 1.8 0 0 1 27.8 39Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M27.8 48H30.2A1.8 1.8 0 0 1 32 49.8V51.2A1.8 1.8 0 0 1 30.2 53H27.8A1.8 1.8 0 0 1 26 51.2V49.8A1.8 1.8 0 0 1 27.8 48Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M37.8 30H40.2A1.8 1.8 0 0 1 42 31.8V33.2A1.8 1.8 0 0 1 40.2 35H37.8A1.8 1.8 0 0 1 36 33.2V31.8A1.8 1.8 0 0 1 37.8 30Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M37.8 48H40.2A1.8 1.8 0 0 1 42 49.8V51.2A1.8 1.8 0 0 1 40.2 53H37.8A1.8 1.8 0 0 1 36 51.2V49.8A1.8 1.8 0 0 1 37.8 48Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M47.8 30H50.2A1.8 1.8 0 0 1 52 31.8V33.2A1.8 1.8 0 0 1 50.2 35H47.8A1.8 1.8 0 0 1 46 33.2V31.8A1.8 1.8 0 0 1 47.8 30Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M47.8 39H50.2A1.8 1.8 0 0 1 52 40.8V42.2A1.8 1.8 0 0 1 50.2 44H47.8A1.8 1.8 0 0 1 46 42.2V40.8A1.8 1.8 0 0 1 47.8 39Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M47.8 48H50.2A1.8 1.8 0 0 1 52 49.8V51.2A1.8 1.8 0 0 1 50.2 53H47.8A1.8 1.8 0 0 1 46 51.2V49.8A1.8 1.8 0 0 1 47.8 48Z" fill="#BE123C" fill-opacity="0.35"/>
+<path d="M37.8 39H40.2A1.8 1.8 0 0 1 42 40.8V42.2A1.8 1.8 0 0 1 40.2 44H37.8A1.8 1.8 0 0 1 36 42.2V40.8A1.8 1.8 0 0 1 37.8 39Z" fill="#E5C34A"/>
+</svg>

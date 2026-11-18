@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDA4AF"/><stop offset="1" stop-color="#BE123C"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#FFE4E9" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M17 14H47A8 8 0 0 1 55 22V42A8 8 0 0 1 47 50H17A8 8 0 0 1 9 42V22A8 8 0 0 1 17 14Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M17 14H47A8 8 0 0 1 55 22V42A8 8 0 0 1 47 50H17A8 8 0 0 1 9 42V22A8 8 0 0 1 17 14Z" fill="url(#g1)"/>
+<path d="M27 23L27 41L42 32Z" fill="#BE123C"/>
+<path d="M27 23L27 41L42 32Z" fill="none" stroke="#BE123C" stroke-opacity="1.00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M45.2 21A2.8 2.8 0 1 1 50.8 21A2.8 2.8 0 1 1 45.2 21Z" fill="#E5C34A"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#99F6E4" stop-opacity="1.00"/><stop offset="1" stop-color="#14B8A6" stop-opacity="1.00"/></linearGradient>
+</defs>
+<path d="M6 17a5 5 0 0 1 5-5h12l5 5h25a5 5 0 0 1 5 5v26a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M6 17a5 5 0 0 1 5-5h12l5 5h25a5 5 0 0 1 5 5v26a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5Z" fill="#0F766E"/>
+<path d="M8 24H56A2 2 0 0 1 58 26V26A2 2 0 0 1 56 28H8A2 2 0 0 1 6 26V26A2 2 0 0 1 8 24Z" fill="#FFFFFF" fill-opacity="0.25"/>
+<path d="M12 22H52A6 6 0 0 1 58 28V46A6 6 0 0 1 52 52H12A6 6 0 0 1 6 46V28A6 6 0 0 1 12 22Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M12 22H52A6 6 0 0 1 58 28V46A6 6 0 0 1 52 52H12A6 6 0 0 1 6 46V28A6 6 0 0 1 12 22Z" fill="url(#g1)"/>
+<path d="M24.5 30H39.5A2.5 2.5 0 0 1 42 32.5V40.5A2.5 2.5 0 0 1 39.5 43H24.5A2.5 2.5 0 0 1 22 40.5V32.5A2.5 2.5 0 0 1 24.5 30Z" fill="#FFFFFF"/>
+<path d="M29.2 44H34.8A1.2 1.2 0 0 1 36 45.2V45.2A1.2 1.2 0 0 1 34.8 46.4H29.2A1.2 1.2 0 0 1 28 45.2V45.2A1.2 1.2 0 0 1 29.2 44Z" fill="#FFFFFF"/>
+</svg>

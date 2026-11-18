@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FCD34D"/><stop offset="1" stop-color="#D97706"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#FEF3C7" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M32 10C18 10 9 20 9 31c0 8 6 12 11 12 4 0 5 2 5 5 0 4 3 7 8 7 14 0 22-9 22-21C55 21 46 10 32 10Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M32 10C18 10 9 20 9 31c0 8 6 12 11 12 4 0 5 2 5 5 0 4 3 7 8 7 14 0 22-9 22-21C55 21 46 10 32 10Z" fill="url(#g1)"/>
+<path d="M17 27A4 4 0 1 1 25 27A4 4 0 1 1 17 27Z" fill="#F87171"/>
+<path d="M27 20A4 4 0 1 1 35 20A4 4 0 1 1 27 20Z" fill="#E5C34A"/>
+<path d="M38 24A4 4 0 1 1 46 24A4 4 0 1 1 38 24Z" fill="#34D399"/>
+<path d="M40 35A4 4 0 1 1 48 35A4 4 0 1 1 40 35Z" fill="#60A5FA"/>
+</svg>

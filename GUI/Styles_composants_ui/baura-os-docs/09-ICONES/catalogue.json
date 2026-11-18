@@ -1,0 +1,3812 @@
+{
+"a-arrow-down": {
+"source": "lucide",
+"categories": [
+"text",
+"design"
+]
+},
+"a-arrow-up": {
+"source": "lucide",
+"categories": [
+"text",
+"design"
+]
+},
+"a-large-small": {
+"source": "lucide",
+"categories": [
+"text",
+"design"
+]
+},
+"accessibility": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"medical"
+]
+},
+"activity": {
+"source": "lucide",
+"categories": [
+"medical",
+"account",
+"social",
+"science",
+"multimedia"
+]
+},
+"ad": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"accessibility",
+"notifications"
+]
+},
+"air-vent": {
+"source": "lucide",
+"categories": [
+"home"
+]
+},
+"alarm-clock": {
+"source": "lucide",
+"categories": [
+"devices",
+"notifications",
+"time"
+]
+},
+"alarm-clock-check": {
+"source": "lucide",
+"categories": [
+"devices",
+"notifications",
+"time"
+]
+},
+"alarm-clock-minus": {
+"source": "lucide",
+"categories": [
+"devices",
+"notifications",
+"time"
+]
+},
+"alarm-smoke": {
+"source": "lucide",
+"categories": [
+"home",
+"devices",
+"travel"
+]
+},
+"align-center-horizontal": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"align-center-vertical": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"alignC": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"alignL": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"alignR": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"angle": {
+"source": "lucide",
+"categories": [
+"math",
+"design"
+]
+},
+"antenna": {
+"source": "lucide",
+"categories": [
+"devices",
+"multimedia",
+"communication"
+]
+},
+"anvil": {
+"source": "lucide",
+"categories": [
+"buildings",
+"tools",
+"gaming"
+]
+},
+"aperture": {
+"source": "lucide",
+"categories": [
+"photography"
+]
+},
+"app-window": {
+"source": "lucide",
+"categories": [
+"layout",
+"design",
+"development",
+"files"
+]
+},
+"app-window-mac": {
+"source": "lucide",
+"categories": [
+"layout",
+"design",
+"development",
+"files"
+]
+},
+"apps": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"archive": {
+"source": "lucide",
+"categories": [
+"files",
+"mail"
+]
+},
+"archive-restore": {
+"source": "lucide",
+"categories": [
+"files",
+"mail"
+]
+},
+"archive-x": {
+"source": "lucide",
+"categories": [
+"files",
+"mail"
+]
+},
+"armenian-dram": {
+"source": "lucide",
+"categories": [
+"finance"
+]
+},
+"arrow-big-down": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming"
+]
+},
+"arrow-big-down-dash": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming",
+"files"
+]
+},
+"arrow-big-left-dash": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming"
+]
+},
+"arrow-big-up": {
+"source": "lucide",
+"categories": [
+"arrows",
+"text",
+"development",
+"gaming"
+]
+},
+"arrow-down": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrow-down-left": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrow-left": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrow-left-right": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrow-right": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrow-up": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrow-up-down": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrow-up-right": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"arrowDown": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"arrowUp": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"astroid": {
+"source": "lucide",
+"categories": [
+"shapes",
+"math"
+]
+},
+"at-sign": {
+"source": "lucide",
+"categories": [
+"text",
+"account"
+]
+},
+"atom": {
+"source": "lucide",
+"categories": [
+"science"
+]
+},
+"audio-lines": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"communication"
+]
+},
+"audio-lines-off": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"communication"
+]
+},
+"audio-waveform": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"communication"
+]
+},
+"award": {
+"source": "lucide",
+"categories": [
+"account",
+"sports",
+"gaming"
+]
+},
+"axe": {
+"source": "lucide",
+"categories": [
+"tools",
+"gaming"
+]
+},
+"axis-3d": {
+"source": "lucide",
+"categories": [
+"design"
+]
+},
+"baby": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"people"
+]
+},
+"badge": {
+"source": "lucide",
+"categories": [
+"account",
+"social",
+"shapes"
+]
+},
+"badge-alert": {
+"source": "lucide",
+"categories": [
+"account",
+"social"
+]
+},
+"badge-check": {
+"source": "lucide",
+"categories": [
+"social"
+]
+},
+"badge-info": {
+"source": "lucide",
+"categories": [
+"account",
+"accessibility",
+"social"
+]
+},
+"badge-question-mark": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"social",
+"shapes"
+]
+},
+"ban": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"bangladeshi-taka": {
+"source": "lucide",
+"categories": [
+"finance",
+"shopping",
+"travel"
+]
+},
+"banknote": {
+"source": "lucide",
+"categories": [
+"finance"
+]
+},
+"barcode": {
+"source": "lucide",
+"categories": [
+"shopping"
+]
+},
+"baseline": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"battery": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"battery-charging": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"battery-full": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"battery-low": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"battery-medium": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"battery-warning": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"bell": {
+"source": "lucide",
+"categories": [
+"account",
+"notifications"
+]
+},
+"bell-minus": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"bell-off": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"bell-plus": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"bell-ring": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"binoculars": {
+"source": "lucide",
+"categories": [
+"navigation",
+"nature",
+"photography",
+"science",
+"travel",
+"development"
+]
+},
+"bitcoin": {
+"source": "lucide",
+"categories": [
+"development",
+"finance"
+]
+},
+"blend": {
+"source": "lucide",
+"categories": [
+"design",
+"photography",
+"tools",
+"development"
+]
+},
+"blocks": {
+"source": "lucide",
+"categories": [
+"development",
+"layout",
+"shapes"
+]
+},
+"bluetooth": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"bluetooth-connected": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"bluetooth-off": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"bluetooth-searching": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"bold": {
+"source": "baura",
+"categories": [
+"text"
+]
+},
+"bolt": {
+"source": "baura",
+"categories": [
+"tools",
+"home"
+]
+},
+"bomb": {
+"source": "lucide",
+"categories": [
+"security",
+"tools"
+]
+},
+"book-copy": {
+"source": "lucide",
+"categories": [
+"development",
+"text",
+"gaming"
+]
+},
+"bookmark": {
+"source": "baura",
+"categories": [
+"account"
+]
+},
+"box": {
+"source": "lucide",
+"categories": [
+"shapes",
+"gaming",
+"development",
+"math"
+]
+},
+"boxes": {
+"source": "lucide",
+"categories": [
+"shapes",
+"gaming",
+"development"
+]
+},
+"braces": {
+"source": "lucide",
+"categories": [
+"development",
+"files"
+]
+},
+"brackets": {
+"source": "lucide",
+"categories": [
+"development",
+"files"
+]
+},
+"brick-wall-fire": {
+"source": "lucide",
+"categories": [
+"security",
+"home",
+"connectivity"
+]
+},
+"broom-sparkles": {
+"source": "lucide",
+"categories": [
+"tools",
+"home",
+"gaming"
+]
+},
+"brush": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"tools"
+]
+},
+"bubbles": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"bug": {
+"source": "lucide",
+"categories": [
+"development",
+"animals"
+]
+},
+"building": {
+"source": "lucide",
+"categories": [
+"account",
+"buildings"
+]
+},
+"cable": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices",
+"multimedia"
+]
+},
+"cable-car": {
+"source": "lucide",
+"categories": [
+"transportation",
+"travel"
+]
+},
+"cake": {
+"source": "baura",
+"categories": [
+"food-beverage",
+"social",
+"account"
+]
+},
+"calculator": {
+"source": "lucide",
+"categories": [
+"math",
+"devices"
+]
+},
+"calendar": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"calendar-1": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"calendar-arrow-down": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"calendar-check": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"calendar-clock": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"calendar-days": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"calendar-plus": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"calendar-x": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"camera": {
+"source": "lucide",
+"categories": [
+"photography",
+"devices",
+"communication"
+]
+},
+"camera-off": {
+"source": "lucide",
+"categories": [
+"photography",
+"devices",
+"communication"
+]
+},
+"captions": {
+"source": "lucide",
+"categories": [
+"multimedia"
+]
+},
+"car-battery": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"transportation"
+]
+},
+"case-sensitive": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"cast": {
+"source": "lucide",
+"categories": [
+"devices",
+"connectivity"
+]
+},
+"chart": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"chart-area": {
+"source": "lucide",
+"categories": [
+"charts"
+]
+},
+"chart-bar": {
+"source": "lucide",
+"categories": [
+"charts"
+]
+},
+"chart-bar-big": {
+"source": "lucide",
+"categories": [
+"charts"
+]
+},
+"chart-bar-decreasing": {
+"source": "lucide",
+"categories": [
+"charts"
+]
+},
+"chart-column": {
+"source": "lucide",
+"categories": [
+"charts"
+]
+},
+"chart-line": {
+"source": "lucide",
+"categories": [
+"charts"
+]
+},
+"chart-pie": {
+"source": "lucide",
+"categories": [
+"charts",
+"files"
+]
+},
+"chart-scatter": {
+"source": "lucide",
+"categories": [
+"charts"
+]
+},
+"check": {
+"source": "baura",
+"categories": [
+"notifications"
+]
+},
+"check-check": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"check-line": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"chevDown": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"chevL": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"chevR": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"chevUp": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"chevron-down": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming"
+]
+},
+"chevron-left": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"chevron-right": {
+"source": "lucide",
+"categories": [
+"arrows",
+"math",
+"development"
+]
+},
+"chevron-up": {
+"source": "lucide",
+"categories": [
+"arrows",
+"math",
+"gaming"
+]
+},
+"chevrons-down": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming"
+]
+},
+"chevrons-left": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming"
+]
+},
+"chevrons-left-right-ellipsis": {
+"source": "lucide",
+"categories": [
+"communication",
+"devices",
+"multimedia",
+"gaming"
+]
+},
+"chevrons-right": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming"
+]
+},
+"chevrons-up": {
+"source": "lucide",
+"categories": [
+"arrows",
+"gaming"
+]
+},
+"chevrons-up-down": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"circle": {
+"source": "baura",
+"categories": [
+"shapes"
+]
+},
+"circle-alert": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"circle-check": {
+"source": "lucide",
+"categories": [
+"notifications"
+]
+},
+"circle-dashed": {
+"source": "lucide",
+"categories": [
+"development",
+"shapes"
+]
+},
+"circle-fading-plus": {
+"source": "lucide",
+"categories": [
+"communication",
+"social"
+]
+},
+"circle-minus": {
+"source": "lucide",
+"categories": [
+"math"
+]
+},
+"circle-pause": {
+"source": "lucide",
+"categories": [
+"multimedia"
+]
+},
+"circle-play": {
+"source": "lucide",
+"categories": [
+"multimedia"
+]
+},
+"circle-plus": {
+"source": "lucide",
+"categories": [
+"math",
+"development",
+"cursors",
+"gaming"
+]
+},
+"circle-question-mark": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"text",
+"notifications"
+]
+},
+"circle-stop": {
+"source": "lucide",
+"categories": [
+"multimedia"
+]
+},
+"circle-user": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"circle-x": {
+"source": "lucide",
+"categories": [
+"math",
+"development"
+]
+},
+"clapperboard": {
+"source": "lucide",
+"categories": [
+"multimedia"
+]
+},
+"clipboard": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"clipboard-check": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"clipboard-copy": {
+"source": "lucide",
+"categories": [
+"text",
+"arrows"
+]
+},
+"clipboard-list": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"clipboard-paste": {
+"source": "lucide",
+"categories": [
+"text",
+"arrows"
+]
+},
+"clock": {
+"source": "baura",
+"categories": [
+"time"
+]
+},
+"clock-3": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"cloud": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"cloud-download": {
+"source": "lucide",
+"categories": [
+"arrows",
+"files"
+]
+},
+"cloud-drizzle": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"cloud-lightning": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"cloud-off": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"weather"
+]
+},
+"cloud-rain": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"cloud-snow": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"cloud-sun": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"cloud-upload": {
+"source": "lucide",
+"categories": [
+"arrows",
+"files"
+]
+},
+"code": {
+"source": "lucide",
+"categories": [
+"text",
+"development"
+]
+},
+"code-xml": {
+"source": "lucide",
+"categories": [
+"text",
+"development"
+]
+},
+"cog": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"coins": {
+"source": "lucide",
+"categories": [
+"gaming"
+]
+},
+"columns-2": {
+"source": "lucide",
+"categories": [
+"layout",
+"design",
+"text"
+]
+},
+"compass": {
+"source": "baura",
+"categories": [
+"navigation",
+"travel"
+]
+},
+"component": {
+"source": "lucide",
+"categories": [
+"design",
+"development"
+]
+},
+"contact": {
+"source": "lucide",
+"categories": [
+"account",
+"connectivity",
+"communication",
+"social"
+]
+},
+"copy": {
+"source": "baura",
+"categories": [
+"text"
+]
+},
+"copy-plus": {
+"source": "lucide",
+"categories": [
+"text",
+"math"
+]
+},
+"corner-down-left": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"corner-up-right": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"cpu": {
+"source": "baura",
+"categories": [
+"devices"
+]
+},
+"credit-card": {
+"source": "lucide",
+"categories": [
+"account",
+"finance"
+]
+},
+"crop": {
+"source": "lucide",
+"categories": [
+"photography",
+"design"
+]
+},
+"crosshair": {
+"source": "lucide",
+"categories": [
+"photography"
+]
+},
+"cuboid": {
+"source": "lucide",
+"categories": [
+"shapes",
+"math",
+"food-beverage"
+]
+},
+"database": {
+"source": "lucide",
+"categories": [
+"devices",
+"development"
+]
+},
+"disc": {
+"source": "lucide",
+"categories": [
+"devices",
+"multimedia"
+]
+},
+"disc-3": {
+"source": "lucide",
+"categories": [
+"devices",
+"multimedia"
+]
+},
+"dot": {
+"source": "baura",
+"categories": [
+"shapes",
+"text"
+]
+},
+"download": {
+"source": "lucide",
+"categories": [
+"arrows",
+"files"
+]
+},
+"droplet": {
+"source": "lucide",
+"categories": [
+"weather",
+"gaming"
+]
+},
+"dumbbell": {
+"source": "lucide",
+"categories": [
+"navigation",
+"sports"
+]
+},
+"ear": {
+"source": "lucide",
+"categories": [
+"medical",
+"accessibility"
+]
+},
+"ear-off": {
+"source": "lucide",
+"categories": [
+"medical",
+"accessibility"
+]
+},
+"eraser": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"ethernet-port": {
+"source": "lucide",
+"categories": [
+"communication",
+"devices",
+"multimedia",
+"gaming"
+]
+},
+"expand": {
+"source": "lucide",
+"categories": [
+"text",
+"arrows"
+]
+},
+"external": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"external-link": {
+"source": "lucide",
+"categories": [
+"arrows",
+"text",
+"social"
+]
+},
+"eye": {
+"source": "baura",
+"categories": [
+"accessibility",
+"photography",
+"design",
+"security"
+]
+},
+"eye-off": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"photography",
+"design",
+"security"
+]
+},
+"eyeOff": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"fast-forward": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"arrows"
+]
+},
+"file": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-archive": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-badge": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-chart-column": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-check": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-code": {
+"source": "lucide",
+"categories": [
+"files",
+"development"
+]
+},
+"file-cog": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-down": {
+"source": "lucide",
+"categories": [
+"files",
+"arrows"
+]
+},
+"file-image": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-lock": {
+"source": "lucide",
+"categories": [
+"files",
+"security"
+]
+},
+"file-minus": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-pen": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-plus": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-search": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-spreadsheet": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"file-text": {
+"source": "lucide",
+"categories": [
+"files",
+"text"
+]
+},
+"file-up": {
+"source": "lucide",
+"categories": [
+"files",
+"arrows"
+]
+},
+"file-x": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"film": {
+"source": "baura",
+"categories": [
+"photography",
+"multimedia"
+]
+},
+"flag": {
+"source": "lucide",
+"categories": [
+"account",
+"social"
+]
+},
+"flame": {
+"source": "lucide",
+"categories": [
+"weather",
+"social",
+"gaming"
+]
+},
+"folder": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-archive": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-check": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-down": {
+"source": "lucide",
+"categories": [
+"files",
+"arrows"
+]
+},
+"folder-input": {
+"source": "lucide",
+"categories": [
+"files",
+"arrows"
+]
+},
+"folder-lock": {
+"source": "lucide",
+"categories": [
+"files",
+"security"
+]
+},
+"folder-minus": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-open": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-output": {
+"source": "lucide",
+"categories": [
+"files",
+"arrows"
+]
+},
+"folder-plus": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-search": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-sync": {
+"source": "lucide",
+"categories": [
+"files",
+"arrows"
+]
+},
+"folder-tree": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"folder-up": {
+"source": "lucide",
+"categories": [
+"files",
+"arrows"
+]
+},
+"folder-x": {
+"source": "lucide",
+"categories": [
+"files"
+]
+},
+"forward": {
+"source": "baura",
+"categories": [
+"mail"
+]
+},
+"frame": {
+"source": "lucide",
+"categories": [
+"design",
+"photography"
+]
+},
+"fullscreen": {
+"source": "baura",
+"categories": [
+"layout",
+"multimedia",
+"design",
+"photography"
+]
+},
+"func": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"funnel": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"gamepad-2": {
+"source": "lucide",
+"categories": [
+"gaming",
+"devices"
+]
+},
+"gauge": {
+"source": "lucide",
+"categories": [
+"transportation",
+"sports",
+"science"
+]
+},
+"gift": {
+"source": "lucide",
+"categories": [
+"gaming",
+"account"
+]
+},
+"git-branch": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"git-commit-horizontal": {
+"source": "lucide",
+"categories": [
+"development",
+"navigation"
+]
+},
+"git-merge": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"git-pull-request": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"globe": {
+"source": "baura",
+"categories": [
+"navigation"
+]
+},
+"globe-lock": {
+"source": "lucide",
+"categories": [
+"security",
+"development",
+"devices"
+]
+},
+"grid": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"grip": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"grip-horizontal": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"grip-vertical": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"hammer": {
+"source": "lucide",
+"categories": [
+"tools",
+"home"
+]
+},
+"hand": {
+"source": "baura",
+"categories": [
+"cursors",
+"accessibility"
+]
+},
+"hand-grab": {
+"source": "lucide",
+"categories": [
+"cursors",
+"design",
+"layout"
+]
+},
+"hand-metal": {
+"source": "lucide",
+"categories": [
+"emoji",
+"multimedia"
+]
+},
+"hard-drive": {
+"source": "lucide",
+"categories": [
+"development",
+"devices"
+]
+},
+"hard-drive-download": {
+"source": "lucide",
+"categories": [
+"development",
+"devices",
+"arrows",
+"files"
+]
+},
+"hard-drive-upload": {
+"source": "lucide",
+"categories": [
+"development",
+"devices",
+"arrows",
+"files"
+]
+},
+"hash": {
+"source": "lucide",
+"categories": [
+"text",
+"social"
+]
+},
+"hdd": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"heading-1": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"heading-2": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"heading-3": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"headphones": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"connectivity",
+"devices",
+"files",
+"gaming"
+]
+},
+"heart": {
+"source": "lucide",
+"categories": [
+"medical",
+"social",
+"multimedia",
+"emoji",
+"gaming",
+"shapes"
+]
+},
+"highlighter": {
+"source": "lucide",
+"categories": [
+"text",
+"design"
+]
+},
+"home": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"hourglass": {
+"source": "lucide",
+"categories": [
+"time",
+"gaming"
+]
+},
+"house": {
+"source": "lucide",
+"categories": [
+"buildings",
+"home",
+"navigation"
+]
+},
+"id-card": {
+"source": "lucide",
+"categories": [
+"security",
+"account"
+]
+},
+"image": {
+"source": "baura",
+"categories": [
+"photography",
+"text",
+"multimedia",
+"files"
+]
+},
+"image-plus": {
+"source": "lucide",
+"categories": [
+"photography",
+"multimedia",
+"files"
+]
+},
+"images": {
+"source": "lucide",
+"categories": [
+"photography",
+"text",
+"multimedia",
+"files"
+]
+},
+"inbox": {
+"source": "baura",
+"categories": [
+"account",
+"mail"
+]
+},
+"indent": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"info": {
+"source": "baura",
+"categories": [
+"accessibility",
+"notifications"
+]
+},
+"italic": {
+"source": "baura",
+"categories": [
+"text"
+]
+},
+"justify": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"key": {
+"source": "lucide",
+"categories": [
+"security",
+"account"
+]
+},
+"key-round": {
+"source": "lucide",
+"categories": [
+"security",
+"account"
+]
+},
+"keyboard": {
+"source": "baura",
+"categories": [
+"text",
+"devices",
+"development"
+]
+},
+"languages": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"laptop": {
+"source": "baura",
+"categories": [
+"devices"
+]
+},
+"layers": {
+"source": "lucide",
+"categories": [
+"design",
+"layout"
+]
+},
+"layers-2": {
+"source": "lucide",
+"categories": [
+"design",
+"layout"
+]
+},
+"layout-dashboard": {
+"source": "lucide",
+"categories": [
+"design",
+"layout"
+]
+},
+"layout-grid": {
+"source": "lucide",
+"categories": [
+"design",
+"layout"
+]
+},
+"layout-list": {
+"source": "lucide",
+"categories": [
+"design",
+"layout",
+"photography",
+"text"
+]
+},
+"layout-panel-left": {
+"source": "lucide",
+"categories": [
+"design",
+"layout"
+]
+},
+"layout-panel-top": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"layout-template": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"leaf": {
+"source": "lucide",
+"categories": [
+"nature",
+"sustainability",
+"seasons"
+]
+},
+"lightbulb": {
+"source": "lucide",
+"categories": [
+"photography"
+]
+},
+"lightbulb-off": {
+"source": "lucide",
+"categories": [
+"photography"
+]
+},
+"line": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"link": {
+"source": "baura",
+"categories": [
+"text",
+"account"
+]
+},
+"link-2": {
+"source": "lucide",
+"categories": [
+"text",
+"account"
+]
+},
+"list": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"list-checks": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"list-filter": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"list-music": {
+"source": "lucide",
+"categories": [
+"multimedia"
+]
+},
+"list-ordered": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"list-plus": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"text"
+]
+},
+"list-todo": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"list-tree": {
+"source": "lucide",
+"categories": [
+"files",
+"text",
+"layout"
+]
+},
+"listOl": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"listUl": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"loader-circle": {
+"source": "lucide",
+"categories": [
+"cursors",
+"multimedia",
+"layout"
+]
+},
+"locate": {
+"source": "lucide",
+"categories": [
+"navigation"
+]
+},
+"lock": {
+"source": "baura",
+"categories": [
+"security"
+]
+},
+"lock-open": {
+"source": "lucide",
+"categories": [
+"security"
+]
+},
+"mail": {
+"source": "baura",
+"categories": [
+"text",
+"account",
+"mail"
+]
+},
+"mail-badge": {
+"source": "lucide",
+"categories": [
+"mail",
+"communication",
+"security"
+]
+},
+"mail-check": {
+"source": "lucide",
+"categories": [
+"mail"
+]
+},
+"mail-minus": {
+"source": "lucide",
+"categories": [
+"mail"
+]
+},
+"mail-open": {
+"source": "lucide",
+"categories": [
+"mail"
+]
+},
+"mail-plus": {
+"source": "lucide",
+"categories": [
+"mail"
+]
+},
+"mail-x": {
+"source": "lucide",
+"categories": [
+"mail"
+]
+},
+"mailOpen": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"map": {
+"source": "lucide",
+"categories": [
+"text",
+"navigation"
+]
+},
+"map-pin": {
+"source": "lucide",
+"categories": [
+"navigation",
+"travel",
+"account"
+]
+},
+"maximize": {
+"source": "lucide",
+"categories": [
+"layout",
+"design"
+]
+},
+"maximize-2": {
+"source": "lucide",
+"categories": [
+"arrows",
+"layout",
+"design"
+]
+},
+"megaphone": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"notifications"
+]
+},
+"memory": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"memory-stick": {
+"source": "lucide",
+"categories": [
+"devices",
+"gaming"
+]
+},
+"menu": {
+"source": "baura",
+"categories": [
+"layout",
+"account"
+]
+},
+"message-circle": {
+"source": "lucide",
+"categories": [
+"social"
+]
+},
+"message-square": {
+"source": "lucide",
+"categories": [
+"social"
+]
+},
+"messages-square": {
+"source": "lucide",
+"categories": [
+"social"
+]
+},
+"mic": {
+"source": "lucide",
+"categories": [
+"devices",
+"communication",
+"connectivity",
+"multimedia"
+]
+},
+"microchip": {
+"source": "lucide",
+"categories": [
+"devices"
+]
+},
+"milestone": {
+"source": "lucide",
+"categories": [
+"arrows",
+"navigation",
+"development",
+"gaming"
+]
+},
+"minimize": {
+"source": "lucide",
+"categories": [
+"layout",
+"design"
+]
+},
+"minimize-2": {
+"source": "lucide",
+"categories": [
+"arrows",
+"layout",
+"design"
+]
+},
+"minus": {
+"source": "baura",
+"categories": [
+"math",
+"development",
+"text",
+"tools"
+]
+},
+"monitor": {
+"source": "baura",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"monitor-smartphone": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"monitor-speaker": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"moon": {
+"source": "lucide",
+"categories": [
+"accessibility"
+]
+},
+"mouse": {
+"source": "lucide",
+"categories": [
+"devices"
+]
+},
+"mouse-pointer": {
+"source": "lucide",
+"categories": [
+"arrows",
+"cursors"
+]
+},
+"mouse-pointer-2": {
+"source": "lucide",
+"categories": [
+"arrows",
+"cursors"
+]
+},
+"mouse-pointer-click": {
+"source": "lucide",
+"categories": [
+"arrows",
+"cursors"
+]
+},
+"move": {
+"source": "lucide",
+"categories": [
+"arrows",
+"cursors"
+]
+},
+"move-3d": {
+"source": "lucide",
+"categories": [
+"design"
+]
+},
+"move-diagonal": {
+"source": "lucide",
+"categories": [
+"arrows",
+"cursors"
+]
+},
+"music": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"files"
+]
+},
+"music-2": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"files"
+]
+},
+"mute": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"navigation": {
+"source": "lucide",
+"categories": [
+"navigation"
+]
+},
+"network": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"nfc": {
+"source": "lucide",
+"categories": [
+"communication",
+"finance",
+"devices"
+]
+},
+"octagon-alert": {
+"source": "lucide",
+"categories": [
+"notifications",
+"shapes"
+]
+},
+"outdent": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"package": {
+"source": "lucide",
+"categories": [
+"files",
+"development"
+]
+},
+"package-check": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"package-open": {
+"source": "lucide",
+"categories": [
+"files",
+"development"
+]
+},
+"package-plus": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"package-x": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"paint-bucket": {
+"source": "lucide",
+"categories": [
+"design",
+"tools"
+]
+},
+"paintbrush": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"photography",
+"home",
+"tools"
+]
+},
+"palette": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"photography"
+]
+},
+"panel-bottom": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"panel-left": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"panel-left-close": {
+"source": "lucide",
+"categories": [
+"layout",
+"arrows"
+]
+},
+"panel-left-open": {
+"source": "lucide",
+"categories": [
+"layout",
+"arrows"
+]
+},
+"panel-right": {
+"source": "lucide",
+"categories": [
+"layout"
+]
+},
+"panel-top": {
+"source": "lucide",
+"categories": [
+"layout",
+"design",
+"development"
+]
+},
+"paperclip": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"files",
+"mail"
+]
+},
+"pause": {
+"source": "baura",
+"categories": [
+"multimedia"
+]
+},
+"pen": {
+"source": "baura",
+"categories": [
+"text",
+"design",
+"tools"
+]
+},
+"pen-line": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"tools"
+]
+},
+"pen-tool": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"cursors"
+]
+},
+"pencil": {
+"source": "lucide",
+"categories": [
+"design",
+"cursors",
+"tools",
+"text"
+]
+},
+"percent": {
+"source": "lucide",
+"categories": [
+"math",
+"development",
+"finance",
+"shopping"
+]
+},
+"phone": {
+"source": "baura",
+"categories": [
+"text",
+"connectivity",
+"devices",
+"communication"
+]
+},
+"phone-call": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices",
+"communication"
+]
+},
+"phone-off": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices",
+"communication"
+]
+},
+"pilcrow": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"pin": {
+"source": "baura",
+"categories": [
+"navigation",
+"account"
+]
+},
+"pin-off": {
+"source": "lucide",
+"categories": [
+"navigation"
+]
+},
+"pip": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"pipette": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"science"
+]
+},
+"play": {
+"source": "baura",
+"categories": [
+"arrows",
+"multimedia"
+]
+},
+"plug": {
+"source": "lucide",
+"categories": [
+"devices",
+"development"
+]
+},
+"plug-zap": {
+"source": "lucide",
+"categories": [
+"devices"
+]
+},
+"plus": {
+"source": "baura",
+"categories": [
+"math",
+"tools",
+"development",
+"text",
+"cursors",
+"gaming"
+]
+},
+"pointer": {
+"source": "lucide",
+"categories": [
+"cursors"
+]
+},
+"power": {
+"source": "baura",
+"categories": [
+"connectivity"
+]
+},
+"power-off": {
+"source": "lucide",
+"categories": [
+"connectivity"
+]
+},
+"presentation": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"photography",
+"devices",
+"communication",
+"design"
+]
+},
+"printer": {
+"source": "lucide",
+"categories": [
+"devices"
+]
+},
+"puzzle": {
+"source": "baura",
+"categories": [
+"development",
+"gaming"
+]
+},
+"qr-code": {
+"source": "lucide",
+"categories": [
+"development",
+"social"
+]
+},
+"quote": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"radio": {
+"source": "lucide",
+"categories": [
+"devices",
+"multimedia",
+"social"
+]
+},
+"receipt": {
+"source": "lucide",
+"categories": [
+"finance",
+"travel"
+]
+},
+"rect": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"recycle": {
+"source": "lucide",
+"categories": [
+"sustainability"
+]
+},
+"redo": {
+"source": "baura",
+"categories": [
+"text",
+"arrows"
+]
+},
+"redo-2": {
+"source": "lucide",
+"categories": [
+"text",
+"arrows"
+]
+},
+"refresh": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"refresh-ccw": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"refresh-cw": {
+"source": "lucide",
+"categories": [
+"arrows"
+]
+},
+"repeat": {
+"source": "baura",
+"categories": [
+"arrows",
+"multimedia"
+]
+},
+"repeat-1": {
+"source": "lucide",
+"categories": [
+"multimedia"
+]
+},
+"reply": {
+"source": "baura",
+"categories": [
+"mail"
+]
+},
+"rewind": {
+"source": "lucide",
+"categories": [
+"arrows",
+"multimedia"
+]
+},
+"rocket": {
+"source": "lucide",
+"categories": [
+"gaming",
+"development"
+]
+},
+"rotate-ccw": {
+"source": "lucide",
+"categories": [
+"arrows",
+"design",
+"photography"
+]
+},
+"rotate-cw": {
+"source": "lucide",
+"categories": [
+"arrows",
+"design",
+"photography"
+]
+},
+"route": {
+"source": "lucide",
+"categories": [
+"navigation"
+]
+},
+"router": {
+"source": "lucide",
+"categories": [
+"development",
+"devices",
+"connectivity",
+"home"
+]
+},
+"rows-2": {
+"source": "lucide",
+"categories": [
+"layout",
+"design",
+"text"
+]
+},
+"rss": {
+"source": "lucide",
+"categories": [
+"development",
+"social"
+]
+},
+"ruler": {
+"source": "lucide",
+"categories": [
+"tools",
+"design",
+"layout"
+]
+},
+"save": {
+"source": "lucide",
+"categories": [
+"text",
+"files"
+]
+},
+"scan": {
+"source": "lucide",
+"categories": [
+"devices",
+"shopping",
+"security",
+"social",
+"gaming"
+]
+},
+"scan-eye": {
+"source": "lucide",
+"categories": [
+"photography",
+"multimedia",
+"accessibility",
+"security",
+"devices",
+"account"
+]
+},
+"scan-face": {
+"source": "lucide",
+"categories": [
+"account",
+"security",
+"devices",
+"social"
+]
+},
+"scan-line": {
+"source": "lucide",
+"categories": [
+"devices",
+"shopping"
+]
+},
+"scan-text": {
+"source": "lucide",
+"categories": [
+"text",
+"devices"
+]
+},
+"scissors": {
+"source": "lucide",
+"categories": [
+"text",
+"design",
+"tools"
+]
+},
+"search": {
+"source": "baura",
+"categories": [
+"text",
+"social"
+]
+},
+"send": {
+"source": "baura",
+"categories": [
+"mail",
+"communication",
+"connectivity"
+]
+},
+"server": {
+"source": "lucide",
+"categories": [
+"development",
+"devices"
+]
+},
+"server-cog": {
+"source": "lucide",
+"categories": [
+"development",
+"devices"
+]
+},
+"settings": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"settings-2": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"shapes": {
+"source": "lucide",
+"categories": [
+"shapes",
+"gaming"
+]
+},
+"share": {
+"source": "lucide",
+"categories": [
+"account",
+"social"
+]
+},
+"share-2": {
+"source": "lucide",
+"categories": [
+"account",
+"social"
+]
+},
+"shield": {
+"source": "baura",
+"categories": [
+"account",
+"security",
+"development",
+"gaming",
+"shapes"
+]
+},
+"shield-alert": {
+"source": "lucide",
+"categories": [
+"account",
+"security",
+"development",
+"notifications",
+"gaming"
+]
+},
+"shield-check": {
+"source": "lucide",
+"categories": [
+"account",
+"security",
+"development",
+"gaming"
+]
+},
+"shield-off": {
+"source": "lucide",
+"categories": [
+"account",
+"security",
+"development",
+"gaming"
+]
+},
+"shield-x": {
+"source": "lucide",
+"categories": [
+"account",
+"security",
+"development",
+"gaming"
+]
+},
+"shopping-bag": {
+"source": "lucide",
+"categories": [
+"shopping"
+]
+},
+"shopping-cart": {
+"source": "lucide",
+"categories": [
+"shopping"
+]
+},
+"shrink": {
+"source": "lucide",
+"categories": [
+"layout",
+"arrows"
+]
+},
+"shuffle": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"arrows"
+]
+},
+"sigma": {
+"source": "baura",
+"categories": [
+"text",
+"math",
+"science"
+]
+},
+"signal": {
+"source": "lucide",
+"categories": [
+"connectivity"
+]
+},
+"signal-high": {
+"source": "lucide",
+"categories": [
+"connectivity"
+]
+},
+"signal-low": {
+"source": "lucide",
+"categories": [
+"connectivity"
+]
+},
+"signal-zero": {
+"source": "lucide",
+"categories": [
+"connectivity"
+]
+},
+"skip-back": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"arrows"
+]
+},
+"skip-forward": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"arrows"
+]
+},
+"skipBack": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"skipFwd": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"sliders-horizontal": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"sliders-vertical": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"smartphone": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"sortAZ": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"sortDown": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"sortUp": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"sortZA": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"sparkle": {
+"source": "lucide",
+"categories": [
+"shapes"
+]
+},
+"sparkles": {
+"source": "baura",
+"categories": [
+"cursors",
+"multimedia",
+"gaming",
+"weather"
+]
+},
+"speaker": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"devices"
+]
+},
+"speech": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"communication"
+]
+},
+"spline": {
+"source": "lucide",
+"categories": [
+"design"
+]
+},
+"square": {
+"source": "lucide",
+"categories": [
+"shapes",
+"multimedia"
+]
+},
+"square-dashed": {
+"source": "lucide",
+"categories": [
+"text",
+"design"
+]
+},
+"square-terminal": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"star": {
+"source": "baura",
+"categories": [
+"account",
+"social",
+"shapes",
+"multimedia",
+"weather",
+"emoji",
+"gaming"
+]
+},
+"starFill": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"step-back": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"arrows"
+]
+},
+"step-forward": {
+"source": "lucide",
+"categories": [
+"multimedia",
+"arrows"
+]
+},
+"store": {
+"source": "lucide",
+"categories": [
+"buildings",
+"navigation",
+"shopping"
+]
+},
+"strike": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"sun": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"weather",
+"seasons",
+"sustainability"
+]
+},
+"sunrise": {
+"source": "lucide",
+"categories": [
+"arrows",
+"weather",
+"time"
+]
+},
+"sunset": {
+"source": "lucide",
+"categories": [
+"arrows",
+"weather"
+]
+},
+"table": {
+"source": "baura",
+"categories": [
+"text",
+"files"
+]
+},
+"table-2": {
+"source": "lucide",
+"categories": [
+"text",
+"files"
+]
+},
+"table2": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"tablet": {
+"source": "lucide",
+"categories": [
+"devices"
+]
+},
+"tag": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"tags": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"terminal": {
+"source": "lucide",
+"categories": [
+"development"
+]
+},
+"text-cursor": {
+"source": "lucide",
+"categories": [
+"text",
+"cursors"
+]
+},
+"text-cursor-input": {
+"source": "lucide",
+"categories": [
+"text",
+"layout"
+]
+},
+"text-quote": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"thermometer": {
+"source": "lucide",
+"categories": [
+"weather"
+]
+},
+"thumbs-down": {
+"source": "lucide",
+"categories": [
+"account",
+"social",
+"emoji"
+]
+},
+"thumbs-up": {
+"source": "lucide",
+"categories": [
+"account",
+"social",
+"emoji"
+]
+},
+"ticket": {
+"source": "lucide",
+"categories": [
+"account",
+"transportation"
+]
+},
+"timer": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"timer-off": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"toBottom": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"toTop": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"toggle-left": {
+"source": "lucide",
+"categories": [
+"layout",
+"account",
+"development"
+]
+},
+"toggle-right": {
+"source": "lucide",
+"categories": [
+"layout",
+"account",
+"development"
+]
+},
+"trash": {
+"source": "baura",
+"categories": [
+"files",
+"mail"
+]
+},
+"trending-down": {
+"source": "lucide",
+"categories": [
+"charts",
+"arrows"
+]
+},
+"trending-up": {
+"source": "lucide",
+"categories": [
+"charts",
+"arrows"
+]
+},
+"triangle": {
+"source": "baura",
+"categories": [
+"shapes"
+]
+},
+"triangle-alert": {
+"source": "lucide",
+"categories": [
+"notifications",
+"shapes",
+"development"
+]
+},
+"trophy": {
+"source": "lucide",
+"categories": [
+"sports",
+"gaming"
+]
+},
+"tv": {
+"source": "lucide",
+"categories": [
+"devices",
+"multimedia",
+"communication"
+]
+},
+"type": {
+"source": "baura",
+"categories": [
+"text"
+]
+},
+"underline": {
+"source": "baura",
+"categories": [
+"text"
+]
+},
+"undo": {
+"source": "baura",
+"categories": [
+"text",
+"arrows"
+]
+},
+"undo-2": {
+"source": "lucide",
+"categories": [
+"text",
+"arrows"
+]
+},
+"unlink": {
+"source": "lucide",
+"categories": [
+"text"
+]
+},
+"unlock": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"unplug": {
+"source": "lucide",
+"categories": [
+"devices",
+"development"
+]
+},
+"upload": {
+"source": "lucide",
+"categories": [
+"arrows",
+"files"
+]
+},
+"usb": {
+"source": "lucide",
+"categories": [
+"devices",
+"multimedia",
+"home"
+]
+},
+"user": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"user-check": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"user-cog": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"user-minus": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"user-plus": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"user-round": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"user-x": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"users": {
+"source": "lucide",
+"categories": [
+"account"
+]
+},
+"vector-square": {
+"source": "lucide",
+"categories": [
+"shapes",
+"math",
+"design",
+"tools"
+]
+},
+"video": {
+"source": "lucide",
+"categories": [
+"devices",
+"communication",
+"connectivity",
+"photography"
+]
+},
+"video-off": {
+"source": "lucide",
+"categories": [
+"devices",
+"communication",
+"connectivity",
+"photography"
+]
+},
+"volume": {
+"source": "baura",
+"categories": [
+"connectivity",
+"communication",
+"multimedia"
+]
+},
+"volume-1": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"communication",
+"multimedia"
+]
+},
+"volume-2": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"communication",
+"multimedia"
+]
+},
+"volume-x": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"communication",
+"multimedia"
+]
+},
+"wallet": {
+"source": "lucide",
+"categories": [
+"account",
+"finance"
+]
+},
+"wand": {
+"source": "lucide",
+"categories": [
+"design",
+"gaming",
+"cursors",
+"photography"
+]
+},
+"wand-sparkles": {
+"source": "lucide",
+"categories": [
+"design",
+"gaming",
+"cursors",
+"photography"
+]
+},
+"warn": {
+"source": "baura",
+"categories": [
+"baura"
+]
+},
+"watch": {
+"source": "lucide",
+"categories": [
+"time"
+]
+},
+"webcam": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices",
+"communication"
+]
+},
+"wifi": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"wifi-high": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"wifi-low": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"wifi-off": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"wifi-zero": {
+"source": "lucide",
+"categories": [
+"connectivity",
+"devices"
+]
+},
+"wind": {
+"source": "lucide",
+"categories": [
+"weather",
+"sustainability"
+]
+},
+"wrench": {
+"source": "lucide",
+"categories": [
+"account",
+"development",
+"tools"
+]
+},
+"x": {
+"source": "baura",
+"categories": [
+"notifications",
+"math"
+]
+},
+"zap": {
+"source": "baura",
+"categories": [
+"connectivity",
+"devices",
+"photography",
+"weather"
+]
+},
+"zoom-in": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"layout",
+"design",
+"text",
+"photography"
+]
+},
+"zoom-out": {
+"source": "lucide",
+"categories": [
+"accessibility",
+"layout",
+"design",
+"text",
+"photography"
+]
+}
+}

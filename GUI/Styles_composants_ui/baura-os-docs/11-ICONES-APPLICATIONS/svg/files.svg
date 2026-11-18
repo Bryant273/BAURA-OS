@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6D66F2"/><stop offset="1" stop-color="#4338CA"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#E0E7FF" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M12 22a4 4 0 0 1 4-4h9l4 4h19a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4Z" fill="#FFFFFF" fill-opacity="0.55"/>
+<path d="M17 26H47A5 5 0 0 1 52 31V43A5 5 0 0 1 47 48H17A5 5 0 0 1 12 43V31A5 5 0 0 1 17 26Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M17 26H47A5 5 0 0 1 52 31V43A5 5 0 0 1 47 48H17A5 5 0 0 1 12 43V31A5 5 0 0 1 17 26Z" fill="url(#g1)"/>
+<path d="M42.2 37.5A2.8 2.8 0 1 1 47.8 37.5A2.8 2.8 0 1 1 42.2 37.5Z" fill="#E5C34A"/>
+</svg>

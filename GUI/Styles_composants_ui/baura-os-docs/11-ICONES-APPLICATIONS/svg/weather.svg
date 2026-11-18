@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#38BDF8"/><stop offset="1" stop-color="#0369A1"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M15 24A9 9 0 1 1 33 24A9 9 0 1 1 15 24Z" fill="#E5C34A"/>
+<path d="M35.56 28.75L38.34 29.89" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M28.81 35.54L29.97 38.3" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M19.25 35.56L18.11 38.34" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M12.46 28.81L9.7 29.97" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M12.44 19.25L9.66 18.11" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M19.19 12.46L18.03 9.7" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M28.75 12.44L29.89 9.66" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M35.54 19.19L38.3 18.03" fill="none" stroke="#E5C34A" stroke-opacity="1.00" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M20 41A8 8 0 1 1 36 41A8 8 0 1 1 20 41Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M20 41A8 8 0 1 1 36 41A8 8 0 1 1 20 41Z" fill="#FFFFFF"/>
+<path d="M28 37A11 11 0 1 1 50 37A11 11 0 1 1 28 37Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M28 37A11 11 0 1 1 50 37A11 11 0 1 1 28 37Z" fill="#FFFFFF"/>
+<path d="M39 42A7 7 0 1 1 53 42A7 7 0 1 1 39 42Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M39 42A7 7 0 1 1 53 42A7 7 0 1 1 39 42Z" fill="#FFFFFF"/>
+<path d="M26 41H48A4 4 0 0 1 52 45V45A4 4 0 0 1 48 49H26A4 4 0 0 1 22 45V45A4 4 0 0 1 26 41Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M26 41H48A4 4 0 0 1 52 45V45A4 4 0 0 1 48 49H26A4 4 0 0 1 22 45V45A4 4 0 0 1 26 41Z" fill="#FFFFFF"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0F766E"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#CCFBF1" stop-opacity="1.00"/></linearGradient>
+<linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="1.00"/><stop offset="1" stop-color="#99F6E4" stop-opacity="1.00"/></linearGradient>
+</defs>
+<rect x="4" y="4" width="56" height="56" rx="15" fill="url(#bg)"/><rect x="4.5" y="4.5" width="55" height="55" rx="14.5" fill="none" stroke="#fff" stroke-opacity=".3"/>
+<path d="M36 10L44 14L34 34L26 30Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M36 10L44 14L34 34L26 30Z" fill="url(#g1)"/>
+<path d="M26 30l8 4c0 10-6 18-18 20 4-6 4-12 10-24Z" fill="#000" fill-opacity=".18" transform="translate(0 1.6)"/>
+<path d="M26 30l8 4c0 10-6 18-18 20 4-6 4-12 10-24Z" fill="url(#g2)"/>
+<path d="M47 38.5L48.29 43.71L53.5 45L48.29 46.29L47 51.5L45.71 46.29L40.5 45L45.71 43.71Z" fill="#E5C34A"/>
+<path d="M21 46L25 40" fill="none" stroke="#0F766E" stroke-opacity="0.60" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

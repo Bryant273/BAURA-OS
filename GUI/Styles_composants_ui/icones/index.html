@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BAURA OS</title>
+<link rel="icon" href="icones/favicon.svg" type="image/svg+xml">
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#000;overflow:hidden}
+  .layer{position:fixed;inset:0}
+  .layer iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
+  /* Bureau : en dessous de tout, prêt dès le départ */
+  #Ldesk{z-index:1;transform:scale(1.04);transition:transform 1.1s cubic-bezier(.16,1,.3,1)}
+  #Ldesk.active{transform:none}
+  /* Connexion : par-dessus le bureau (verrouillage = on la remet) */
+  #Llogin{z-index:2;transition:opacity .9s ease .1s,transform 1.1s cubic-bezier(.16,1,.3,1)}
+  #Llogin.away{opacity:0;transform:scale(1.06);pointer-events:none}
+  /* Démarrage : tout au-dessus, fond noir */
+  #Lboot{z-index:3;background:#000;transition:opacity .9s ease .05s}
+  #Lboot.gone{opacity:0;pointer-events:none}
+  /* Installateur : tout au-dessus, seulement tant que le système n'est pas installé */
+  #Linst{z-index:4;background:#000;transition:opacity .9s ease}
+  #Linst.gone{opacity:0;pointer-events:none}
+  [inert]{pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="layer" id="Ldesk" inert><iframe id="fDesk" src="taskbar-and-desktop-tools-ui-baura-os.html" title="Bureau BAURA OS"></iframe></div>
+<div class="layer" id="Llogin" inert><iframe id="fLogin" src="login-baura.html" title="Connexion BAURA OS"></iframe></div>
+<div class="layer" id="Lboot"><iframe id="fBoot" src="boot-baura.html" title="Démarrage BAURA OS"></iframe></div>
+
+<div class="layer" id="Linst" hidden><iframe id="fInst" title="Installation de BAURA OS"></iframe></div>
+
+<script src="baura-system.js"></script>
+<script>
+/* ===== Le « système » : orchestre démarrage → connexion → bureau, verrouillage, veille, redémarrage, extinction ===== */
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var Ldesk=$('#Ldesk'), Llogin=$('#Llogin'), Lboot=$('#Lboot');
+  var fDesk=$('#fDesk'), fLogin=$('#fLogin'), fBoot=$('#fBoot');
+  var S={booted:false,loggedIn:false,user:null,guest:false};
+  var Linst=$('#Linst'), fInst=$('#fInst');
+
+  function inert(el,v){ if(v) el.setAttribute('inert',''); else el.removeAttribute('inert') }
+  function focusFrame(f){ try{ f.contentWindow.focus() }catch(e){} }
+  function post(f,msg){ try{ f.contentWindow.postMessage(msg,'*') }catch(e){} }
+
+  function bootDone(){
+    if(S.booted||!Linst.hidden) return; S.booted=true;
+    Lboot.classList.add('gone'); inert(Lboot,true);
+    inert(Llogin,false); setTimeout(function(){focusFrame(fLogin)},300);
+  }
+  function loginOk(name,guest){
+    S.loggedIn=true; S.user=name||'Utilisateur'; S.guest=!!guest;
+    Llogin.classList.add('away'); inert(Llogin,true);
+    Ldesk.classList.add('active'); inert(Ldesk,false);
+    post(fDesk,{baura:'user',name:S.user});
+    setTimeout(function(){focusFrame(fDesk)},300);
+  }
+  function lock(){
+    if(!S.booted) return;
+    S.loggedIn=false;
+    inert(Ldesk,true);                       // le bureau reste en vie derrière (fenêtres conservées)
+    Llogin.classList.remove('away'); inert(Llogin,false);
+    post(fLogin,{baura:'reset',guest:S.guest});
+    setTimeout(function(){focusFrame(fLogin)},300);
+  }
+  function reboot(){
+    S.booted=false; S.loggedIn=false; S.user=null; S.guest=false;
+    inert(Ldesk,true); Ldesk.classList.remove('active');
+    inert(Llogin,true); Llogin.classList.remove('away');
+    Lboot.classList.remove('gone'); inert(Lboot,false);
+    fDesk.src=fDesk.src; fLogin.src=fLogin.src; fBoot.src=fBoot.src;   // tout repart de zéro
+    setTimeout(function(){focusFrame(fBoot)},300);
+  }
+  var hooks={lock:lock,reboot:reboot};
+
+  Baura.onMessage(function(type,data){
+    if(type==='boot-done') bootDone();
+    else if(type==='login-ok') loginOk(data.user,data.guest);
+    else if(type==='sync'||type==='sync-clear'){ [fDesk,fLogin,fBoot,fInst].forEach(function(f){post(f,data)}) }   // réglages, compte, fichiers : partagés entre tous les cadres
+    else if(type==='install-done'){ Baura.screenOff('restart',function(){ location.reload() }) }
+    else if(type==='power') Baura.handlePower(data.action,hooks);
+  });
+
+  // Premier lancement : l'installateur graphique passe avant tout (index.html?boot=0 ou ?installed=1 le saute)
+  var skipInstall=Baura.param('boot')==='0'||Baura.param('installed')==='1'||Baura.installed();
+  if(!skipInstall){
+    Linst.hidden=false; fInst.src='installer-baura.html'+(Baura.param('fast')==='1'?'?fast=1':'');
+    inert(Lboot,true); inert(Llogin,true); inert(Ldesk,true);
+    setTimeout(function(){focusFrame(fInst)},500);
+  } else if(Baura.param('boot')!=='0'){ setTimeout(function(){focusFrame(fBoot)},400) }
+
+  // Raccourci de développement : index.html?boot=0 saute le démarrage
+  if(Baura.param('boot')==='0'){
+    Lboot.style.transition='none'; bootDone();
+    setTimeout(function(){Lboot.style.transition=''},50);
+  }
+})();
+</script>
+</body>
+</html>

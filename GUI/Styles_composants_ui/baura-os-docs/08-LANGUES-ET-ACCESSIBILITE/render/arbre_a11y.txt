@@ -1,0 +1,9 @@
+- boîte de dialogue « Autoriser cette application ? »
+  - libellé « Elle demande des droits d'administrateur. »
+  - champ de texte « Mot de passe » [focus]
+  - groupe de radios « Durée »
+    - radio « Une fois » [focus]
+    - radio « 15 minutes » [focus]
+    - radio « Toujours » [indisponible]
+  - bouton « Refuser » [focus]
+  - bouton « Autoriser » [focus]
